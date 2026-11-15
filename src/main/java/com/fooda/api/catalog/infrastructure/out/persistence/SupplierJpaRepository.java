@@ -7,7 +7,6 @@ import org.springframework.data.repository.query.Param;
 
 import java.time.Instant;
 
-
 interface SupplierJpaRepository extends JpaRepository<SupplierJpaEntity, Long> {
 
     @Modifying(flushAutomatically = true, clearAutomatically = true)

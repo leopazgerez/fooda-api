@@ -14,4 +14,5 @@ interface BranchJpaRepository extends JpaRepository<BranchJpaEntity, Long> {
     @Query("update BranchJpaEntity e set e.deletedAt = :now, e.deletedBy = :by where e.id = :id and e.deletedAt is null")
     void softDelete(@Param("id") long id, @Param("by") long by, @Param("now") Instant now);
 
-    Optional<BranchJpaEntity> findFirstByKitchenTrue();}
+    Optional<BranchJpaEntity> findFirstByKitchenTrue();
+}

@@ -7,7 +7,6 @@ import org.springframework.data.repository.query.Param;
 
 import java.time.Instant;
 
-
 interface ReserveFundJpaRepository extends JpaRepository<ReserveFundJpaEntity, Long> {
 
     @Modifying(flushAutomatically = true, clearAutomatically = true)
