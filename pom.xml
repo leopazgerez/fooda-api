@@ -8,11 +8,11 @@
         <version>4.1.1</version>
         <relativePath/>
     </parent>
-    <groupId>com.example</groupId>
-    <artifactId>app</artifactId>
+    <groupId>com.fooda</groupId>
+    <artifactId>fooda-api</artifactId>
     <version>0.0.1-SNAPSHOT</version>
-    <name>app</name>
-    <description>Hexagonal Spring Boot template</description>
+    <name>fooda-api</name>
+    <description>Fooda Admin API</description>
     <properties>
         <java.version>17</java.version>
     </properties>

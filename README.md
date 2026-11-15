@@ -26,8 +26,8 @@ set -a; source .env; set +a      # exporta las variables al shell
 | Variable | Por defecto | Para qué |
 |---|---|---|
 | `PORT` | `8080` | Puerto HTTP |
-| `DB_URL` | `jdbc:postgresql://localhost:5432/app` | Base de datos |
-| `DB_USERNAME` / `DB_PASSWORD` | `app` / `app` | Credenciales de la base |
+| `DB_URL` | `jdbc:postgresql://localhost:5432/api` | Base de datos |
+| `DB_USERNAME` / `DB_PASSWORD` | `api` / `api` | Credenciales de la base |
 | `APP_JWT_SECRET` | (obligatoria) | Clave HS256, al menos 32 bytes. Sin ella la app no arranca |
 | `APP_JWT_ACCESS_TTL` | `15m` | Vida del access token |
 | `APP_JWT_REFRESH_TTL` | `30d` | Vida del refresh token |
@@ -95,7 +95,7 @@ USER(EnumSet.noneOf(Permission.class));
 
 ## Capas
 
-Cada módulo (`user`, `auth`) tiene la misma forma, bajo `com.example.app.<módulo>`:
+Cada módulo (`user`, `auth`) tiene la misma forma, bajo `com.fooda.api.<módulo>`:
 
 ```
 domain/                          Java puro: entidades y reglas
@@ -115,24 +115,6 @@ Reglas, comprobadas por `HexagonalArchitectureTest` (ArchUnit):
 - `application` no depende de `infrastructure`, `config`, Spring, Jakarta, Hibernate, Lombok ni Jackson.
 
 Si rompés una, `./mvnw test` falla.
-
-<!-- rename:start -->
-## Renombrar el paquete
-
-Una sola vez, al arrancar el proyecto (Mac, Linux o Windows, solo necesita Java):
-
-```bash
-java scripts/Rename.java com.miempresa.tienda
-```
-
-- Paquete `com.example.app` → `com.miempresa.tienda`: carpetas de `src/main` y `src/test`, `package`, `import` y el `@AnalyzeClasses` del test de arquitectura.
-- `pom.xml`: `groupId` → `com.miempresa`, `artifactId` y `name` → `tienda`. `spring.application.name` → `tienda`.
-- Base de datos: nombre, usuario y contraseña de desarrollo `app` → `tienda` en `docker-compose.yaml`, `.env.example` y los defaults de `application.properties`. Si ya tenías el contenedor creado, recrealo: `docker compose down -v && docker compose up -d` (y actualizá tu `.env`).
-- Clase principal `App` → `TiendaApp` (`mi_tienda` → `MiTiendaApp`).
-- Esta sección del README se borra sola.
-
-Después: `./mvnw clean test`.
-<!-- rename:end -->
 
 ## Agregar un módulo
 
