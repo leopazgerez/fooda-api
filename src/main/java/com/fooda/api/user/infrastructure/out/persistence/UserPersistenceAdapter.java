@@ -58,7 +58,7 @@ public class UserPersistenceAdapter implements UserRepository {
     }
 
     private static User toDomain(UserJpaEntity e) {
-        return new User(new UserId(e.id), e.email, e.fullName, e.passwordHash, e.role, e.emailVerified, e.active, e.version);
+        return new User(new UserId(e.id), e.email, e.fullName, e.passwordHash, e.role, e.emailVerified, e.active, e.getVersion());
     }
 
     private static UserJpaEntity toEntity(User u) {
@@ -70,7 +70,7 @@ public class UserPersistenceAdapter implements UserRepository {
         e.role = u.role();
         e.emailVerified = u.emailVerified();
         e.active = u.active();
-        e.version = u.version();
+        e.setVersion(u.version());
         return e;
     }
 }

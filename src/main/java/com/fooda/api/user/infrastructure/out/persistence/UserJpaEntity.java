@@ -1,5 +1,6 @@
 package com.fooda.api.user.infrastructure.out.persistence;
 
+import com.fooda.api.shared.infrastructure.out.persistence.AuditedJpaEntity;
 import com.fooda.api.user.domain.Role;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -9,11 +10,10 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-import jakarta.persistence.Version;
 
 @Entity
 @Table(name = "app_user")
-class UserJpaEntity {
+class UserJpaEntity extends AuditedJpaEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -38,9 +38,4 @@ class UserJpaEntity {
 
     @Column(name = "active", nullable = false)
     boolean active;
-
-    /** Optimistic lock: a save from a stale snapshot fails instead of overwriting newer data. */
-    @Version
-    @Column(name = "version", nullable = false)
-    Long version;
 }
