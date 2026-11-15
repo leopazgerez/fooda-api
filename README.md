@@ -26,8 +26,8 @@ set -a; source .env; set +a      # exporta las variables al shell
 | Variable | Por defecto | Para qué |
 |---|---|---|
 | `PORT` | `8080` | Puerto HTTP |
-| `DB_URL` | `jdbc:postgresql://localhost:5432/api` | Base de datos |
-| `DB_USERNAME` / `DB_PASSWORD` | `api` / `api` | Credenciales de la base |
+| `DB_URL` | `jdbc:postgresql://localhost:5432/fooda` | Base de datos |
+| `DB_USERNAME` / `DB_PASSWORD` | `fooda` / `fooda` | Credenciales de la base |
 | `APP_JWT_SECRET` | (obligatoria) | Clave HS256, al menos 32 bytes. Sin ella la app no arranca |
 | `APP_JWT_ACCESS_TTL` | `15m` | Vida del access token |
 | `APP_JWT_REFRESH_TTL` | `30d` | Vida del refresh token |
