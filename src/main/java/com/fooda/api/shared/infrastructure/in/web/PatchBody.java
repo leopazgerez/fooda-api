@@ -4,6 +4,7 @@ import com.fooda.api.shared.application.Field;
 import com.fooda.api.shared.domain.ValidationException;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
@@ -29,6 +30,11 @@ public final class PatchBody {
 
     public Field<BigDecimal> decimal(String key) {
         return read(key, Number.class, v -> new BigDecimal(v.toString()));
+    }
+
+    /** A decimal rounded to cents. */
+    public Field<BigDecimal> money(String key) {
+        return decimal(key).map(v -> v.setScale(2, RoundingMode.HALF_UP));
     }
 
     public Field<Integer> integer(String key) {

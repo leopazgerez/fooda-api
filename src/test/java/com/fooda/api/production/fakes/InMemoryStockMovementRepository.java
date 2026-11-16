@@ -34,6 +34,12 @@ public class InMemoryStockMovementRepository implements StockMovementRepository 
                 && (m.type() == MovementType.TRANSFER_OUT || m.type() == MovementType.TRANSFER_IN)).toList();
     }
 
+    @Override
+    public List<StockMovement> findBySale(long saleId) {
+        return rows.values().stream().filter(m -> m.refId() != null && m.refId() == saleId
+                && m.type() == MovementType.SALE).toList();
+    }
+
     @Override public void softDelete(long movementId, long actorId) { rows.remove(movementId); }
 
     @Override public boolean isPackUsed(long packId) {

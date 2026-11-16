@@ -117,8 +117,7 @@ public class PackService implements PackUseCase {
 
     /** Loads settings, costs, dishes and versions once and returns a pack → view mapper. */
     private Function<Pack, PackView> viewer() {
-        Settings s = settings.find()
-                .orElseThrow(() -> new ResourceNotFoundException("Todavía no se cargaron los parámetros"));
+        Settings s = settings.require();
         LocalDate today = calendar.today();
         List<Supply> all = supplies.findAll();
         Map<Long, Supply> byId = all.stream().collect(Collectors.toMap(Supply::id, x -> x));

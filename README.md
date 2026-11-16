@@ -110,7 +110,7 @@ Errores: siempre JSON `{message, status, timestamp}` y, si aplica, `field` (por 
 | `DELETE /api/purchases/{id}` | Anula la compra (borra su gasto); una pendiente de producción vuelve a `pending` |
 | `GET /api/packaging` | Estado de bandejas y stickers |
 
-Mientras no existan las ventas (bloque 4), `sold` y `payback` valen 0, y hasta el bloque 5 ningún mes figura como cerrado.
+`sold` sale de las ventas vivas del lote; hasta el bloque 5 ningún mes figura como cerrado.
 
 ### Stock
 
@@ -128,6 +128,33 @@ Mientras no existan las ventas (bloque 4), `sold` y `payback` valen 0, y hasta e
 - **Lote `INICIAL`:** un ajuste sin `productionId` usa el lote `INICIAL` (número 0, `packs` 0, ya cerrado), que se crea la primera vez y aparece en `GET /api/productions`. Nunca se anula ni se reabre.
 - **Anulaciones, 409 cuando:** el traslado es el de reparto de una producción (se revierte reabriendo la producción); la sede destino ya no tiene los packs que recibió; anular un ajuste deja el stock en negativo; la fecha cae en un mes cerrado. Reabrir una producción también da 409 si hay un traslado manual vivo desde su lote.
 - Las reglas viven en `core/domain/stock/StockRules`; el flujo completo está en `StockFlowTest`.
+
+### Ventas, clientes y gastos
+
+`GET` con `SALES_READ`; el resto con `SALES_WRITE` (hoy solo `ADMIN`). Los ids en los cuerpos aceptan número o texto numérico.
+
+| Método y ruta | Qué hace |
+|---|---|
+| `GET /api/sales?branchId=&type=&customerId=&from=&to=` | Ventas paginadas |
+| `GET /api/sales/{id}` | Detalle con líneas, `total`, `profit` y `payments` (404 si está anulada) |
+| `POST /api/sales` `{date?, branchId, customerId?, type, method, reason?, discount?, shipping?, notes?, expenseType?, lines:[{productionId, packId, quantity, unitPrice?}]}` | 201. Descuenta stock de la sede; 400 si no alcanza (`lines`) |
+| `DELETE /api/sales/{id}` | 204, anula la venta |
+| `GET /api/customers`, `GET /api/customers/{id}` | Clientes paginados / detalle (`lastPurchase`, `packs`, `total`, `regular`) |
+| `GET /api/customers/follow-ups` | `{followUps:[{customer, lastPurchase, daysWithoutPurchase, packs}], birthdays}` |
+| `POST /api/customers`, `PATCH /api/customers/{id}` `{firstName, lastName, phone?, address?, birthday?, notes?, version}` | Alta / edición parcial |
+| `DELETE /api/customers/{id}` | 204; 409 si tiene ventas vivas |
+| `GET /api/expenses`, `GET /api/expenses/{id}` | Gastos paginados / detalle |
+| `POST /api/expenses` `{date?, type, detail, amount \| amountPacks, method?, paid?, notes?}` | 201 |
+| `PATCH /api/expenses/{id}` (mismos campos + `version`), `DELETE /api/expenses/{id}` | Edición parcial / baja |
+
+- **Tipos de venta** (`type`): `retail`, `wholesale`, `consignment`, `internal_use`, `paid_with_packs`. Sin `unitPrice` se usa el precio del pack.
+- **Cobro:** cada venta con ingreso tiene un solo cobro por el total (precio × cantidad − descuento + envío), con el medio de la venta.
+- **Pago con packs** (`paid_with_packs`): exige `notes` (400 en `notes`); no cobra, y crea un gasto `packs` con la cantidad de packs y el precio promedio.
+- **Uso interno** (`internal_use`): descuenta stock pero no genera cobro ni gasto.
+- **Anulación:** devuelve el stock y borra el cobro y el gasto generado. 409 si la fecha cae en un mes cerrado.
+- **Clientes:** `regular` marca al cliente habitual; `follow-ups` lista a quienes hace tiempo no compran y los cumpleaños del día (el 29 de febrero se muestra el 28 en años no bisiestos). 409 al borrar si tiene ventas vivas.
+- **Gastos:** `amount` en pesos o `amountPacks` (se convierte con el precio del pack y se guarda `packPrice`); no ambos. Los generados por una compra o una venta no se editan ni se borran (409 en `origin`); un mes cerrado también da 409.
+- Las reglas viven en `core/domain/sales`; el flujo completo está en `SalesFlowTest`.
 
 ### Cosas a tener en cuenta
 

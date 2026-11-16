@@ -40,4 +40,9 @@ public final class Rows {
                 + " values (?, ?, 'planned', date '2026-01-01', '{}', " + AUDIT + ") returning production_id",
                 Long.class, "P" + n, n, actor, actor);
     }
+
+    public static long customer(JdbcTemplate jdbc, long actor) {
+        return jdbc.queryForObject("insert into customer (first_name, last_name, created_at, created_by, updated_at, updated_by)"
+                + " values ('Ana', 'Pérez', " + AUDIT + ") returning customer_id", Long.class, actor, actor);
+    }
 }

@@ -1,5 +1,6 @@
 package com.fooda.api.shared.infrastructure.in.web;
 
+import com.fooda.api.shared.application.Field;
 import com.fooda.api.shared.domain.ValidationException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
@@ -48,9 +49,13 @@ public final class RequestBodies {
     }
 
     public static LocalDate date(PatchBody b, String key) {
-        String s = b.string(key).value();
+        return dateField(b, key).value();
+    }
+
+    /** Like {@link #date}, but keeps "absent" and "present null" apart (for PATCH). */
+    public static Field<LocalDate> dateField(PatchBody b, String key) {
         try {
-            return s == null ? null : LocalDate.parse(s);
+            return b.string(key).map(LocalDate::parse);
         } catch (DateTimeParseException e) {
             throw new ValidationException(key, "Fecha inválida");
         }

@@ -25,19 +25,25 @@ public class ExpensePersistenceAdapter implements ExpenseRepository {
     @Override
     @Transactional
     public Expense add(Expense x) {
-        ExpenseJpaEntity e = new ExpenseJpaEntity();
-        e.date = x.date();
-        e.type = x.type();
-        e.detail = x.detail();
-        e.amount = x.amount();
-        e.amountPacks = x.amountPacks();
-        e.packPrice = x.packPrice();
-        e.method = x.method().code();
-        e.paid = x.paid();
-        e.notes = x.notes();
-        e.purchaseId = x.purchaseId();
-        e.saleId = x.saleId();
-        return toDomain(expenses.saveAndFlush(e));
+        return save(x);
+    }
+
+    @Override
+    @Transactional
+    public Expense save(Expense x) {
+        return toDomain(expenses.saveAndFlush(toEntity(x)));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<Expense> findById(long id) {
+        return expenses.findById(id).map(ExpensePersistenceAdapter::toDomain);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<Expense> findBySale(long saleId) {
+        return expenses.findBySaleId(saleId).map(ExpensePersistenceAdapter::toDomain);
     }
 
     @Override
@@ -62,5 +68,23 @@ public class ExpensePersistenceAdapter implements ExpenseRepository {
     private static Expense toDomain(ExpenseJpaEntity e) {
         return new Expense(e.id, e.date, e.type, e.detail, e.amount, e.amountPacks, e.packPrice,
                 PaymentMethod.of(e.method, "method"), e.paid, e.notes, e.purchaseId, e.saleId, e.getVersion());
+    }
+
+    private static ExpenseJpaEntity toEntity(Expense x) {
+        ExpenseJpaEntity e = new ExpenseJpaEntity();
+        e.id = x.id();
+        e.date = x.date();
+        e.type = x.type();
+        e.detail = x.detail();
+        e.amount = x.amount();
+        e.amountPacks = x.amountPacks();
+        e.packPrice = x.packPrice();
+        e.method = x.method().code();
+        e.paid = x.paid();
+        e.notes = x.notes();
+        e.purchaseId = x.purchaseId();
+        e.saleId = x.saleId();
+        e.setVersion(x.version());
+        return e;
     }
 }

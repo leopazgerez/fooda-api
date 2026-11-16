@@ -147,7 +147,7 @@ public class PurchaseService implements PurchaseUseCase {
 
     @Override
     public PackagingStatus packaging() {
-        Settings s = liveSettings();
+        Settings s = settings.require();
         List<Supply> live = supplies.findAll();
         List<PurchaseLine> boughtLines = purchases.findAll().stream()
                 .filter(x -> x.status() == PurchaseStatus.BOUGHT).flatMap(x -> x.lines().stream()).toList();
@@ -204,7 +204,7 @@ public class PurchaseService implements PurchaseUseCase {
     /** Port de registrarPrecios: a price different from the one in force that day is added; big rises alert. */
     private List<PriceAlert> registerPrices(List<PurchaseLine> lines, LocalDate day, Map<Long, Supply> liveById,
                                             long purchaseId) {
-        BigDecimal threshold = liveSettings().priceRiseAlert();
+        BigDecimal threshold = settings.require().priceRiseAlert();
         List<SupplyPrice> prices = new ArrayList<>(supplies.findAllPrices());
         List<PriceAlert> alerts = new ArrayList<>();
         for (PurchaseLine l : lines) {
@@ -249,11 +249,6 @@ public class PurchaseService implements PurchaseUseCase {
 
     private String supplierName(long id) {
         return suppliers.findById(id).map(Supplier::name).orElse("—");
-    }
-
-    private Settings liveSettings() {
-        return settings.find()
-                .orElseThrow(() -> new ResourceNotFoundException("Todavía no se cargaron los parámetros"));
     }
 
     /** Loads what every view shares once and returns a purchase → view mapper (port of compraVista). */

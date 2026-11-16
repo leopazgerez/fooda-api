@@ -154,6 +154,19 @@ class StockPersistenceTest {
     }
 
     @Test
+    void findBySaleReturnsOnlyThatSalesLiveSaleMovements() {
+        long ref = 88L;
+        StockMovement a = movements.add(new StockMovement(null, LocalDate.of(2026, 3, 1), shop, lot, pack, -2, MovementType.SALE, ref, null));
+        StockMovement dead = movements.add(new StockMovement(null, LocalDate.of(2026, 3, 1), shop, lot, pack, -1, MovementType.SALE, ref, null));
+        movements.add(new StockMovement(null, LocalDate.of(2026, 3, 1), shop, lot, pack, 1, MovementType.TRANSFER_IN, ref, null));
+        movements.add(new StockMovement(null, LocalDate.of(2026, 3, 1), shop, lot, pack, -1, MovementType.SALE, ref + 1, null));
+        movements.softDelete(dead.id(), actor);
+        reload();
+
+        assertThat(movements.findBySale(ref)).extracting(StockMovement::id).containsExactly(a.id());
+    }
+
+    @Test
     void transferFindAllAndFindByIdSkipDeleted() {
         Transfer a = transfers.add(new Transfer(null, LocalDate.of(2026, 3, 5), kitchen, shop, null, null,
                 List.of(new TransferLine(lot, pack, 4))));

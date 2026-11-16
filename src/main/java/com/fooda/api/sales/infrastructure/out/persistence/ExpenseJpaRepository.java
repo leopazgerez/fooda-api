@@ -12,6 +12,8 @@ interface ExpenseJpaRepository extends JpaRepository<ExpenseJpaEntity, Long> {
 
     Optional<ExpenseJpaEntity> findByPurchaseId(long purchaseId);
 
+    Optional<ExpenseJpaEntity> findBySaleId(long saleId);
+
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query("update ExpenseJpaEntity e set e.deletedAt = :now, e.deletedBy = :by where e.id = :id and e.deletedAt is null")
     void softDelete(@Param("id") long id, @Param("by") long by, @Param("now") Instant now);

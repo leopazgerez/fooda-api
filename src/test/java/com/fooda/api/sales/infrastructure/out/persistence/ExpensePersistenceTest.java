@@ -25,12 +25,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
-@Import({ExpensePersistenceAdapter.class, NoSales.class, JpaAuditingConfig.class, TimeConfig.class,
+@Import({ExpensePersistenceAdapter.class, SalePersistenceAdapter.class, JpaAuditingConfig.class, TimeConfig.class,
         TestcontainersConfiguration.class})
 class ExpensePersistenceTest {
 
     @Autowired ExpensePersistenceAdapter expenses;
-    @Autowired NoSales noSales;
+    @Autowired SalePersistenceAdapter soldPacks;
     @Autowired JdbcTemplate jdbc;
     @Autowired EntityManager em;
 
@@ -78,6 +78,6 @@ class ExpensePersistenceTest {
         assertThat(expenses.findByPurchase(purchase)).isEmpty();
         assertThat(expenses.findAll()).hasSize(1);
         assertThat(jdbc.queryForObject("select deleted_by from expense where expense_id = ?", Long.class, e.id())).isEqualTo(actor);
-        assertThat(noSales.soldByProduction()).isEmpty();
+        assertThat(soldPacks.soldByProduction()).isEmpty();
     }
 }

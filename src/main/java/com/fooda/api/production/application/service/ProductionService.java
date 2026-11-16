@@ -147,7 +147,7 @@ public class ProductionService implements ProductionUseCase {
             if (lines.stream().noneMatch(l -> l.planned() > 0)) {
                 throw new ValidationException(LINES, "Indicá cuántos packs vas a producir");
             }
-            Settings s = liveSettings();
+            Settings s = settings.require();
             LocalDate day = calendar.orToday(start);
             List<ProductionLine> kept = lines.stream().filter(l -> l.planned() > 0)
                     .map(l -> new ProductionLine(l.packId(), l.planned(), null)).toList();
@@ -165,7 +165,7 @@ public class ProductionService implements ProductionUseCase {
     @Override
     public List<ShoppingListGroup> shoppingList(long id) {
         Production p = find(id);
-        BigDecimal packPrice = liveSettings().packPrice();
+        BigDecimal packPrice = settings.require().packPrice();
         List<Purchase> ofProduction = purchases.findByProduction(id);
         return ProductionRules.shoppingList(p, supplies.findAll(), suppliers.findAll()).stream().map(g -> {
             Purchase purchase = ofProduction.stream().filter(x -> x.supplierId() == g.supplier().id())
@@ -353,18 +353,13 @@ public class ProductionService implements ProductionUseCase {
         return p;
     }
 
-    private Settings liveSettings() {
-        return settings.find()
-                .orElseThrow(() -> new ResourceNotFoundException("Todavía no se cargaron los parámetros"));
-    }
-
     private Map<Long, String> packNames() {
         return packs.findAll().stream().collect(Collectors.toMap(Pack::id, Pack::name));
     }
 
     /** Loads what every summary shares once and returns a production → summary mapper (port of produccionResumen). */
     private Function<Production, ProductionSummary> summarizer() {
-        Settings s = liveSettings();
+        Settings s = settings.require();
         List<Production> all = productions.findAll();
         List<Expense> allExpenses = expenses.findAll();
         List<Supply> live = supplies.findAll();

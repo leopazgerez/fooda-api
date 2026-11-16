@@ -22,7 +22,7 @@ public class SettingsService implements SettingsUseCase {
 
     @Override
     public Settings get() {
-        return settings.find().orElseThrow(() -> new ResourceNotFoundException("Todavía no se cargaron los parámetros"));
+        return settings.require();
     }
 
     @Override

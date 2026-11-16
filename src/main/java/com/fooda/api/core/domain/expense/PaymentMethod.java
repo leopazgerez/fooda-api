@@ -21,6 +21,6 @@ public enum PaymentMethod {
                 return v;
             }
         }
-        throw new ValidationException(field, "Valor inválido");
+        throw new ValidationException(field, "Medio de pago inválido");
     }
 }

@@ -54,7 +54,7 @@ class ProductionDomainTest {
         invalid(() -> ProductionStatus.of("x", "status"), "status", "Valor inválido");
         invalid(() -> PurchaseStatus.of(null, "status"), "status", "Valor inválido");
         invalid(() -> MovementType.of("x", "type"), "type", "Valor inválido");
-        invalid(() -> PaymentMethod.of("x", "method"), "method", "Valor inválido");
+        invalid(() -> PaymentMethod.of("x", "method"), "method", "Medio de pago inválido");
     }
 
     @Test void productionLineValidation() {

@@ -19,6 +19,9 @@ public interface StockMovementRepository {
     /** Live TRANSFER_OUT/TRANSFER_IN movements with refId = transferId, by id. */
     List<StockMovement> findTransferLegs(long transferId);
 
+    /** Live SALE movements with refId = saleId, by id. */
+    List<StockMovement> findBySale(long saleId);
+
     void softDelete(long movementId, long actorId);
 
     /** A live movement is of the pack. */

@@ -20,6 +20,7 @@ import com.fooda.api.core.domain.stock.TransferLine;
 import com.fooda.api.shared.application.BusinessCalendar;
 import com.fooda.api.shared.application.ListQuery;
 import com.fooda.api.shared.application.Listing;
+import com.fooda.api.shared.application.Lookups;
 import com.fooda.api.shared.application.Page;
 import com.fooda.api.shared.application.exception.ResourceNotFoundException;
 import com.fooda.api.shared.application.port.out.Transactions;
@@ -82,25 +83,21 @@ public class TransferService implements TransferUseCase {
     public TransferView create(TransferRequest r) {
         return tx.get(() -> {
             stockLock.lock();
-            Branch origin = branch(r.originBranchId());
-            Branch destination = branch(r.destinationBranchId());
+            Branch origin = Lookups.found(r.originBranchId(), branches::findById, "Sede no encontrada");
+            Branch destination = Lookups.found(r.destinationBranchId(), branches::findById, "Sede no encontrada");
             if (origin.id().equals(destination.id())) {
                 throw new ValidationException("destinationBranchId", "Origen y destino deben ser distintos");
             }
             if (r.lines() == null || r.lines().isEmpty()) {
                 throw new ValidationException("lines", "Agregá al menos un pack");
             }
-            Shortage s = StockRules.firstShortage(movements.findAll(), origin.id(), r.lines()).orElse(null);
-            if (s != null) {
-                throw new ValidationException("lines", "Solo hay %d packs de %s (%s) en %s"
-                        .formatted(s.available(), packName(s.packId()), lotCode(s.productionId()), origin.name()));
-            }
             LocalDate day = calendar.pastOrToday(r.date());
-            boolean beforeALotClosed = r.lines().stream().map(OutLine::productionId).distinct()
-                    .map(productions::findById).flatMap(Optional::stream)
-                    .anyMatch(p -> !p.isInitial() && p.closedOn() != null && day.isBefore(p.closedOn()));
-            if (beforeALotClosed) {
-                throw new ValidationException("date", "La fecha no puede ser anterior al cierre del lote");
+            StockRules.requireAfterLotsClosed(r.lines().stream().map(OutLine::productionId).distinct()
+                    .map(productions::findById).flatMap(Optional::stream).toList(), day);
+            Shortage s = StockRules.firstShortage(movements.findAll(), origin.id(), r.lines(), day).orElse(null);
+            if (s != null) {
+                throw new ValidationException("lines", StockRules.SHORTAGE_MESSAGE
+                        .formatted(s.available(), packName(s.packId()), lotCode(s.productionId()), origin.name()));
             }
             monthCloses.requireOpen(day);
             String notes = r.notes() == null || r.notes().isBlank() ? null : r.notes().strip();
@@ -131,7 +128,7 @@ public class TransferService implements TransferUseCase {
             // returning the packs is an exit from the destination: same shortage rule as a new transfer
             List<OutLine> back = t.lines().stream()
                     .map(l -> new OutLine(l.productionId(), l.packId(), l.quantity())).toList();
-            StockRules.firstShortage(movements.findAll(), t.destinationBranchId(), back).ifPresent(s -> {
+            StockRules.firstShortage(movements.findAll(), t.destinationBranchId(), back, t.date()).ifPresent(s -> {
                 throw new ConflictException(null, "En %s ya no quedan %d packs de %s (%s)".formatted(
                         branchName(t.destinationBranchId()), s.requested(), packName(s.packId()),
                         lotCode(s.productionId())));
@@ -178,13 +175,6 @@ public class TransferService implements TransferUseCase {
                 .toList();
         return new TransferView(t, n.branch(t.originBranchId()), n.branch(t.destinationBranchId()),
                 t.lines().stream().mapToInt(TransferLine::quantity).sum(), lines);
-    }
-
-    private Branch branch(Long id) {
-        if (id == null) {
-            throw new ResourceNotFoundException("Sede no encontrada");
-        }
-        return branches.findById(id).orElseThrow(() -> new ResourceNotFoundException("Sede no encontrada"));
     }
 
     private String branchName(long id) {

@@ -63,6 +63,13 @@ public class StockPersistenceAdapter implements StockMovementRepository {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public List<StockMovement> findBySale(long saleId) {
+        return movements.findByRefIdAndTypeInOrderById(saleId, List.of(MovementType.SALE.code()))
+                .stream().map(StockPersistenceAdapter::toDomain).toList();
+    }
+
+    @Override
     @Transactional
     public void softDelete(long movementId, long actorId) {
         movements.softDelete(movementId, actorId, clock.instant());

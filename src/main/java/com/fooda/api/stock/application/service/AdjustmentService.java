@@ -15,6 +15,7 @@ import com.fooda.api.core.domain.stock.MovementType;
 import com.fooda.api.core.domain.stock.StockMovement;
 import com.fooda.api.core.domain.stock.StockRules;
 import com.fooda.api.shared.application.BusinessCalendar;
+import com.fooda.api.shared.application.Lookups;
 import com.fooda.api.shared.application.exception.ResourceNotFoundException;
 import com.fooda.api.shared.application.port.out.Transactions;
 import com.fooda.api.shared.domain.ConflictException;
@@ -25,8 +26,6 @@ import com.fooda.api.stock.application.port.in.AdjustmentUseCase;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.List;
-import java.util.Optional;
-import java.util.function.LongFunction;
 
 public class AdjustmentService implements AdjustmentUseCase {
 
@@ -61,8 +60,8 @@ public class AdjustmentService implements AdjustmentUseCase {
     public StockMovement create(AdjustmentRequest r) {
         return tx.get(() -> {
             stockLock.lock();
-            long branchId = found(r.branchId(), branches::findById, "Sede no encontrada").id();
-            Pack pack = found(r.packId(), packs::findById, "Pack no encontrado");
+            long branchId = Lookups.found(r.branchId(), branches::findById, "Sede no encontrada").id();
+            Pack pack = Lookups.found(r.packId(), packs::findById, "Pack no encontrado");
             if (r.quantity() == null || r.quantity() == 0) {
                 throw new ValidationException("quantity", "La cantidad debe ser un entero distinto de cero");
             }
@@ -77,11 +76,9 @@ public class AdjustmentService implements AdjustmentUseCase {
             }
             LocalDate day = calendar.pastOrToday(r.date());
             Production lot = r.productionId() == null ? initialLot() : closedLot(r.productionId());
-            if (!lot.isInitial() && day.isBefore(lot.closedOn())) {
-                throw new ValidationException("date", "La fecha no puede ser anterior al cierre del lote");
-            }
+            StockRules.requireAfterLotsClosed(List.of(lot), day);
             long productionId = lot.id();
-            if (r.quantity() < 0 && StockRules.available(movements.findAll(), branchId, productionId, r.packId())
+            if (r.quantity() < 0 && StockRules.available(movements.findAll(), branchId, productionId, r.packId(), day)
                     + r.quantity() < 0) {
                 throw new ValidationException("quantity", "El ajuste deja el stock en negativo");
             }
@@ -99,18 +96,11 @@ public class AdjustmentService implements AdjustmentUseCase {
                     .orElseThrow(() -> new ResourceNotFoundException("Ajuste no encontrado"));
             monthCloses.requireOpen(m.date());
             if (m.quantity() > 0 && StockRules.available(movements.findAll(), m.branchId(), m.productionId(),
-                    m.packId()) - m.quantity() < 0) {
+                    m.packId(), m.date()) - m.quantity() < 0) {
                 throw new ConflictException("quantity", "Borrar el ajuste deja el stock en negativo");
             }
             movements.softDelete(id, actorId);
         });
-    }
-
-    private static <T> T found(Long id, LongFunction<Optional<T>> finder, String message) {
-        if (id == null) {
-            throw new ResourceNotFoundException(message);
-        }
-        return finder.apply(id).orElseThrow(() -> new ResourceNotFoundException(message));
     }
 
     private Production closedLot(long id) {
@@ -126,8 +116,7 @@ public class AdjustmentService implements AdjustmentUseCase {
         return productions.findInitial().orElseGet(() -> {
             LocalDate today = calendar.today();
             return productions.save(new Production(null, INITIAL_CODE, 0, ProductionStatus.CLOSED, today, today,
-                    List.of(), ProductionSnapshot.empty(settings.find().orElseThrow(
-                            () -> new ResourceNotFoundException("Todavía no se cargaron los parámetros"))),
+                    List.of(), ProductionSnapshot.empty(settings.require()),
                     null, null, null));
         });
     }
