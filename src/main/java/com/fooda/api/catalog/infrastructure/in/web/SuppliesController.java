@@ -62,7 +62,7 @@ public class SuppliesController {
     @GetMapping
     @PreAuthorize("hasAuthority('CATALOG_READ')")
     public Page<SupplyResponse> list(@RequestParam(defaultValue = "0") int page,
-                                     @RequestParam(defaultValue = "50") int size,
+                                     @RequestParam(defaultValue = "20") int size,
                                      @RequestParam(required = false) String sort,
                                      @RequestParam(required = false) String dir) {
         return supplies.list(new ListQuery(page, size, sort, dir)).map(SupplyResponse::from);
@@ -98,10 +98,10 @@ public class SuppliesController {
     public SupplyResponse update(@PathVariable long id, @RequestBody Map<String, Object> body) {
         var b = new PatchBody(body);
         return SupplyResponse.from(supplies.update(id, new SupplyChanges(b.string("name"),
-                b.string("unit").map(v -> Unit.of(v, "unit")), b.id("supplierId"), b.string("presentation"),
+                b.string("unit").map(v -> Unit.of(v, "unit")), b.required(b.id("supplierId"), "supplierId"), b.string("presentation"),
                 b.decimal("content"), b.decimal("gramsPerUnit"),
                 b.string("packagingType").map(v -> PackagingType.of(v, "packagingType")),
-                b.object("composite").map(Bodies::composite), b.bool("active"))));
+                b.object("composite").map(Bodies::composite), b.required(b.bool("active"), "active"))));
     }
 
     @DeleteMapping("/{id}")

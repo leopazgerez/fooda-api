@@ -32,4 +32,13 @@ class SettingsControllerTest {
                         .contentType(APPLICATION_JSON).content("{}"))
                 .andExpect(status().isForbidden());
     }
+
+    @Test
+    void putWithoutTraysPerPackIs400() throws Exception {
+        mvc.perform(put("/api/settings").with(jwt().authorities(new SimpleGrantedAuthority("SETTINGS_WRITE")))
+                        .contentType(APPLICATION_JSON).content("{\"packPrice\":1000}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.field")
+                        .value("traysPerPack"));
+    }
 }

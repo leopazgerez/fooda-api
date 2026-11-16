@@ -46,9 +46,9 @@ public class SettingsController {
     public SettingsResponse replace(@RequestBody Map<String, Object> body) {
         var b = new PatchBody(body);
         return SettingsResponse.from(settings.replace(new Settings(b.decimal("packPrice").value(),
-                b.decimal("oilMlPerPack").value(), b.id("oilSupplyId").value(), Bodies.intOr0(b, "traysPerPack"),
-                Bodies.intOr0(b, "stickersPerPack"), b.decimal("referenceOverhead").value(),
-                Bodies.intOr0(b, "regularMonths"), Bodies.intOr0(b, "recontactDays"),
+                b.decimal("oilMlPerPack").value(), b.id("oilSupplyId").value(), b.need(b.integer("traysPerPack"), "traysPerPack"),
+                b.need(b.integer("stickersPerPack"), "stickersPerPack"), b.decimal("referenceOverhead").value(),
+                b.need(b.integer("regularMonths"), "regularMonths"), b.need(b.integer("recontactDays"), "recontactDays"),
                 b.decimal("priceRiseAlert").value(), Bodies.strings(b.list("saleReasons").value(), "saleReasons"),
                 Bodies.strings(b.list("expenseTypes").value(), "expenseTypes"), b.id("version").value())));
     }

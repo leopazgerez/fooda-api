@@ -47,7 +47,7 @@ public class DishesController {
     @GetMapping
     @PreAuthorize("hasAuthority('CATALOG_READ')")
     public Page<DishResponse> list(@RequestParam(defaultValue = "0") int page,
-                                   @RequestParam(defaultValue = "50") int size,
+                                   @RequestParam(defaultValue = "20") int size,
                                    @RequestParam(required = false) String sort,
                                    @RequestParam(required = false) String dir) {
         return dishes.list(new ListQuery(page, size, sort, dir)).map(DishResponse::from);

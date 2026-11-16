@@ -36,7 +36,7 @@ public class SuppliersController {
 
     @GetMapping
     @PreAuthorize("hasAuthority('CATALOG_READ')")
-    public Page<Supplier> list(@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "50") int size,
+    public Page<Supplier> list(@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "20") int size,
                                @RequestParam(required = false) String sort, @RequestParam(required = false) String dir) {
         return suppliers.list(new ListQuery(page, size, sort, dir));
     }
@@ -52,7 +52,7 @@ public class SuppliersController {
     public ResponseEntity<Supplier> create(@RequestBody Map<String, Object> body) {
         var b = new PatchBody(body);
         Supplier s = suppliers.create(new Supplier(null, b.string("name").value(), b.string("purchaseDay").value(),
-                Bodies.intOr0(b, "sortOrder"), null));
+                Bodies.intOr(b, "sortOrder", 0), null));
         return Bodies.created(s.id(), s);
     }
 
@@ -61,7 +61,7 @@ public class SuppliersController {
     public Supplier update(@PathVariable long id, @RequestBody Map<String, Object> body) {
         var b = new PatchBody(body);
         return suppliers.update(id, new SupplierChanges(b.string("name"), b.string("purchaseDay"),
-                b.integer("sortOrder")));
+                b.required(b.integer("sortOrder"), "sortOrder")));
     }
 
     @DeleteMapping("/{id}")

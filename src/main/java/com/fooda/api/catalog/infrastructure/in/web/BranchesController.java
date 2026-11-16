@@ -50,7 +50,7 @@ public class BranchesController {
     @GetMapping
     @PreAuthorize("hasAuthority('CATALOG_READ')")
     public Page<BranchResponse> list(@RequestParam(defaultValue = "0") int page,
-                                     @RequestParam(defaultValue = "50") int size,
+                                     @RequestParam(defaultValue = "20") int size,
                                      @RequestParam(required = false) String sort,
                                      @RequestParam(required = false) String dir) {
         return branches.list(new ListQuery(page, size, sort, dir)).map(BranchResponse::from);
@@ -67,8 +67,8 @@ public class BranchesController {
     public ResponseEntity<BranchResponse> create(@RequestBody Map<String, Object> body) {
         var b = new PatchBody(body);
         var created = BranchResponse.from(branches.create(new Branch(null, b.string("name").value(),
-                b.string("address").value(), Bodies.intOr0(b, "capacity"), Bodies.intOr0(b, "stockThreshold"),
-                Bodies.intOr0(b, "freeSlotsThreshold"), Bodies.shipping(b.object("shipping").value()),
+                b.string("address").value(), b.need(b.integer("capacity"), "capacity"), Bodies.intOr(b, "stockThreshold", 0),
+                Bodies.intOr(b, "freeSlotsThreshold", 999), Bodies.shipping(b.object("shipping").value()),
                 Bodies.boolOrFalse(b, "affectsPrice"), Bodies.boolOrFalse(b, "kitchen"), null)));
         return Bodies.created(created.id(), created);
     }
@@ -78,8 +78,11 @@ public class BranchesController {
     public BranchResponse update(@PathVariable long id, @RequestBody Map<String, Object> body) {
         var b = new PatchBody(body);
         return BranchResponse.from(branches.update(id, new BranchChanges(b.string("name"), b.string("address"),
-                b.integer("capacity"), b.integer("stockThreshold"), b.integer("freeSlotsThreshold"),
-                b.object("shipping").map(Bodies::shipping), b.bool("affectsPrice"), b.bool("kitchen"))));
+                b.required(b.integer("capacity"), "capacity"),
+                b.required(b.integer("stockThreshold"), "stockThreshold"),
+                b.required(b.integer("freeSlotsThreshold"), "freeSlotsThreshold"),
+                b.required(b.object("shipping"), "shipping").map(Bodies::shipping),
+                b.required(b.bool("affectsPrice"), "affectsPrice"), b.required(b.bool("kitchen"), "kitchen"))));
     }
 
     @DeleteMapping("/{id}")

@@ -83,7 +83,7 @@ public class PacksController {
     @PreAuthorize("hasAuthority('CATALOG_WRITE')")
     public PackResponse update(@PathVariable long id, @RequestBody Map<String, Object> body) {
         var b = new PatchBody(body);
-        return PackResponse.from(packs.update(id, new PackChanges(b.string("name"), b.bool("active"),
+        return PackResponse.from(packs.update(id, new PackChanges(b.string("name"), b.required(b.bool("active"), "active"),
                 b.decimal("price"))));
     }
 

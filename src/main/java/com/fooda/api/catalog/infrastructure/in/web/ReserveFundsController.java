@@ -37,7 +37,7 @@ public class ReserveFundsController {
     @GetMapping
     @PreAuthorize("hasAuthority('CATALOG_READ')")
     public Page<ReserveFund> list(@RequestParam(defaultValue = "0") int page,
-                                  @RequestParam(defaultValue = "50") int size,
+                                  @RequestParam(defaultValue = "20") int size,
                                   @RequestParam(required = false) String sort,
                                   @RequestParam(required = false) String dir) {
         return funds.list(new ListQuery(page, size, sort, dir));
@@ -53,7 +53,7 @@ public class ReserveFundsController {
     @PreAuthorize("hasAuthority('CATALOG_WRITE')")
     public ResponseEntity<ReserveFund> create(@RequestBody Map<String, Object> body) {
         var b = new PatchBody(body);
-        ReserveFund f = funds.create(new ReserveFund(null, b.string("name").value(), b.decimal("percentage").value(),
+        ReserveFund f = funds.create(new ReserveFund(null, b.string("name").value(), b.need(b.decimal("percentage"), "percentage"),
                 null));
         return Bodies.created(f.id(), f);
     }

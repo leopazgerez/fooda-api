@@ -46,6 +46,22 @@ public final class PatchBody {
         return read(key, List.class, v -> (List<Object>) v);
     }
 
+    /** PATCH of a required key: absent stays absent, an explicit null is a 400. */
+    public <T> Field<T> required(Field<T> f, String key) {
+        if (f.present() && f.value() == null) {
+            throw new ValidationException(key, "Completá " + key);
+        }
+        return f;
+    }
+
+    /** POST/PUT of a required key: absent or null is a 400. */
+    public <T> T need(Field<T> f, String key) {
+        if (!f.present() || f.value() == null) {
+            throw new ValidationException(key, "Completá " + key);
+        }
+        return f.value();
+    }
+
     private static BigDecimal whole(String key, Number v) {
         try {
             return new BigDecimal(v.toString()).stripTrailingZeros().setScale(0);

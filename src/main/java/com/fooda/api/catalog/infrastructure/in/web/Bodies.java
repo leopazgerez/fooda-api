@@ -28,11 +28,13 @@ final class Bodies {
 
     static Shipping shipping(Map<String, Object> m) {
         if (m == null) {
-            return new Shipping(null, null);
+            return new Shipping(ShippingType.AMOUNT, BigDecimal.ZERO);
         }
         var b = new PatchBody(m);
         String type = b.string("type").value();
-        return new Shipping(type == null ? null : ShippingType.of(type, "shipping"), b.decimal("value").value());
+        BigDecimal value = b.decimal("value").value();
+        return new Shipping(type == null ? ShippingType.AMOUNT : ShippingType.of(type, "shipping"),
+                value == null ? BigDecimal.ZERO : value);
     }
 
     static Composite composite(Map<String, Object> m) {
@@ -74,10 +76,11 @@ final class Bodies {
             return null;
         }
         return items.stream().map(o -> {
-            if (!(o instanceof Number n)) {
+            Long v = new PatchBody(java.util.Collections.singletonMap(field, o)).id(field).value();
+            if (v == null) {
                 throw new ValidationException(field, "Valor inválido");
             }
-            return new BigDecimal(n.toString()).longValue();
+            return v;
         }).toList();
     }
 
@@ -89,9 +92,9 @@ final class Bodies {
         return (Map<String, Object>) m;
     }
 
-    static int intOr0(PatchBody b, String key) {
+    static int intOr(PatchBody b, String key, int dflt) {
         Integer v = b.integer(key).value();
-        return v == null ? 0 : v;
+        return v == null ? dflt : v;
     }
 
     static boolean boolOrFalse(PatchBody b, String key) {
