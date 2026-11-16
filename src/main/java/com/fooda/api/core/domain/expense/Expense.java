@@ -22,7 +22,7 @@ public record Expense(Long id, LocalDate date, String type, String detail, BigDe
             throw new ValidationException("amount", "El monto debe ser un número mayor a cero");
         }
         if ((amountPacks == null) != (packPrice == null)) {
-            throw new IllegalArgumentException("amountPacks y packPrice van juntos");
+            throw new ValidationException("amountPacks", "amountPacks y packPrice van juntos");
         }
     }
 }

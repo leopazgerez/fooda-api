@@ -73,9 +73,9 @@ class ProductionDomainTest {
 
     @Test void closedProductionRequiresClosedOn() {
         assertThatThrownBy(() -> production(ProductionStatus.CLOSED, null, null))
-                .isInstanceOf(IllegalArgumentException.class);
+                .isInstanceOf(ValidationException.class);
         assertThatThrownBy(() -> production(ProductionStatus.PLANNED, D, null))
-                .isInstanceOf(IllegalArgumentException.class);
+                .isInstanceOf(ValidationException.class);
         assertThat(production(ProductionStatus.CLOSED, D, null).isPlanned()).isFalse();
     }
 
@@ -102,7 +102,7 @@ class ProductionDomainTest {
 
     @Test void stockMovementZeroQuantity() {
         assertThatThrownBy(() -> new StockMovement(null, D, 1, 1, 1, 0, MovementType.SALE, null, null))
-                .isInstanceOf(IllegalArgumentException.class);
+                .isInstanceOf(ValidationException.class);
         assertThat(new StockMovement(null, D, 1, 1, 1, -2, MovementType.SALE, null, null).quantity()).isEqualTo(-2);
     }
 
@@ -118,8 +118,8 @@ class ProductionDomainTest {
         invalid(() -> expense("t", null, d("1"), null, null), "detail", "Completá detalle");
         invalid(() -> expense("t", "d", null, null, null), "amount", "El monto debe ser un número mayor a cero");
         invalid(() -> expense("t", "d", d("0"), null, null), "amount", "El monto debe ser un número mayor a cero");
-        assertThatThrownBy(() -> expense("t", "d", d("1"), d("2"), null)).isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(() -> expense("t", "d", d("1"), null, d("2"))).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> expense("t", "d", d("1"), d("2"), null)).isInstanceOf(ValidationException.class);
+        assertThatThrownBy(() -> expense("t", "d", d("1"), null, d("2"))).isInstanceOf(ValidationException.class);
         assertThat(expense("t", "d", d("1"), d("2"), d("3")).packPrice()).isEqualByComparingTo("3");
     }
 }

@@ -110,6 +110,20 @@ class ProductionRulesTest {
     }
 
     @Test
+    void codeOrderIsChronological() {
+        assertThat(new ArrayList<>(List.of("1 DIC 26", "10 NOV 26", "lote inicial", "2 NOV 26", "1 ENE 27")).stream()
+                .sorted(ProductionRules.CODE_ORDER).toList())
+                .containsExactly("2 NOV 26", "10 NOV 26", "1 DIC 26", "1 ENE 27", "lote inicial");
+    }
+
+    @Test
+    void shoppingListOfLotWithoutSnapshotIsEmpty() {
+        Production p = new Production(1L, "0 NOV 26", 0, ProductionStatus.PLANNED, LocalDate.of(2026, 11, 1), null,
+                List.of(), null, null, null, null);
+        assertThat(ProductionRules.shoppingList(p, List.of(), List.of())).isEmpty();
+    }
+
+    @Test
     void lotCode() {
         assertThat(ProductionRules.lotCode(1, LocalDate.parse("2026-11-03"))).isEqualTo("1 NOV 26");
         assertThat(ProductionRules.lotCode(12, LocalDate.parse("2027-01-30"))).isEqualTo("12 ENE 27");

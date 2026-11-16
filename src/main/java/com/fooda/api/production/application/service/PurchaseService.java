@@ -54,7 +54,7 @@ public class PurchaseService implements PurchaseUseCase {
             "id", Comparator.comparingLong(v -> v.purchase().id()),
             "supplier", Comparator.comparing(PurchaseView::supplier, String.CASE_INSENSITIVE_ORDER),
             "production", Comparator.comparing(PurchaseView::production,
-                    Comparator.nullsFirst(Comparator.naturalOrder())));
+                    Comparator.nullsFirst(ProductionRules.CODE_ORDER)));
 
     private final SupplyRepository supplies;
     private final SupplierRepository suppliers;
@@ -85,9 +85,8 @@ public class PurchaseService implements PurchaseUseCase {
 
     @Override
     public Page<PurchaseView> list(ListQuery q, Long productionId) {
-        List<PurchaseView> all = purchases.findAll().stream()
-                .filter(p -> productionId == null || productionId.equals(p.productionId()))
-                .map(viewer()).toList();
+        List<PurchaseView> all = (productionId == null ? purchases.findAll() : purchases.findByProduction(productionId))
+                .stream().map(viewer()).toList();
         return Listing.page(all, q, SORTABLE, "id", "desc", Comparator.comparingLong(v -> v.purchase().id()));
     }
 

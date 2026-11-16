@@ -71,7 +71,7 @@ public class ProductionService implements ProductionUseCase {
     private static final String DISTRIBUTION = "distribution";
     private static final Map<String, Comparator<ProductionSummary>> SORTABLE = Map.of(
             "start", Comparator.comparing(ProductionSummary::start),
-            "code", Comparator.comparing(ProductionSummary::code),
+            "code", Comparator.comparing(ProductionSummary::code, ProductionRules.CODE_ORDER),
             "id", Comparator.comparingLong(ProductionSummary::id));
 
     private final ProductionRepository productions;

@@ -1,5 +1,7 @@
 package com.fooda.api.core.domain.production;
 
+import com.fooda.api.shared.domain.ValidationException;
+
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
@@ -12,7 +14,7 @@ public record Production(Long id, String code, int number, ProductionStatus stat
 
     public Production {
         if ((status == ProductionStatus.CLOSED) != (closedOn != null)) {
-            throw new IllegalArgumentException("closedOn debe estar solo en producciones cerradas");
+            throw new ValidationException("closedOn", "closedOn debe estar solo en producciones cerradas");
         }
         lines = lines == null ? List.of() : List.copyOf(lines);
         paidCosts = paidCosts == null ? Map.of() : Map.copyOf(paidCosts);

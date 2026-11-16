@@ -35,9 +35,26 @@ public final class ProductionRules {
 
     private static final String[] MONTHS =
             {"ENE", "FEB", "MAR", "ABR", "MAY", "JUN", "JUL", "AGO", "SEP", "OCT", "NOV", "DIC"};
+    /** Lot codes in chronological order ("2 NOV 26" < "10 NOV 26" < "1 DIC 26"); other shapes go last, by text. */
+    public static final Comparator<String> CODE_ORDER = Comparator
+            .comparing(ProductionRules::codeKey, Comparator.nullsLast(Comparator.naturalOrder()))
+            .thenComparing(Comparator.naturalOrder());
     private static final Collator NAMES = Collator.getInstance(Locale.forLanguageTag("es"));
 
     private ProductionRules() {
+    }
+
+    private static Long codeKey(String code) {
+        String[] parts = code.split(" ");
+        int month = parts.length == 3 ? List.of(MONTHS).indexOf(parts[1]) : -1;
+        if (month < 0) {
+            return null;
+        }
+        try {
+            return (Long.parseLong(parts[2]) * 12 + month) * 100_000 + Long.parseLong(parts[0]);
+        } catch (NumberFormatException e) {
+            return null;
+        }
     }
 
     /** lotCode(1, 2026-11-03) = "1 NOV 26". */
@@ -93,6 +110,9 @@ public final class ProductionRules {
 
     /** Lista de súper por proveedor, menos sobrantes, sin envases. */
     public static List<ShoppingGroup> shoppingList(Production p, List<Supply> live, List<Supplier> suppliers) {
+        if (p.snapshot() == null) {
+            return List.of();
+        }
         Map<Long, Supply> byId = byId(suppliesOf(p, live));
         Map<Long, BigDecimal> costs = p.snapshot().costs();
         Map<Long, BigDecimal> quantities = new LinkedHashMap<>();
