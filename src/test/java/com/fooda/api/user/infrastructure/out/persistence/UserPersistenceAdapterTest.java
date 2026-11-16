@@ -1,9 +1,13 @@
 package com.fooda.api.user.infrastructure.out.persistence;
 
 import com.fooda.api.TestcontainersConfiguration;
+import com.fooda.api.config.JpaAuditingConfig;
+import com.fooda.api.config.TimeConfig;
+import com.fooda.api.support.Db;
 import com.fooda.api.shared.application.Page;
 import com.fooda.api.user.domain.Role;
 import com.fooda.api.user.domain.User;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
@@ -18,11 +22,16 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
-@Import({TestcontainersConfiguration.class, UserPersistenceAdapter.class})
+@Import({TestcontainersConfiguration.class, UserPersistenceAdapter.class, JpaAuditingConfig.class, TimeConfig.class})
 class UserPersistenceAdapterTest {
 
     @Autowired UserPersistenceAdapter users;
     @Autowired JdbcTemplate jdbc;
+
+    @BeforeEach
+    void reset() {
+        Db.reset(jdbc);
+    }
 
     private User user(String email) {
         return new User(null, email, "Ana Pérez", "hash", Role.ADMIN, true, true);
