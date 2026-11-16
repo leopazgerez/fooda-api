@@ -1,7 +1,7 @@
-package com.fooda.api.core.application.service;
+package com.fooda.api.catalog.application.service;
 
-import com.fooda.api.core.application.port.in.SupplierChanges;
-import com.fooda.api.core.application.port.in.SupplierUseCase;
+import com.fooda.api.catalog.application.port.in.SupplierChanges;
+import com.fooda.api.catalog.application.port.in.SupplierUseCase;
 import com.fooda.api.core.application.port.out.SupplierRepository;
 import com.fooda.api.core.application.port.out.SupplyRepository;
 import com.fooda.api.core.domain.catalog.Supplier;

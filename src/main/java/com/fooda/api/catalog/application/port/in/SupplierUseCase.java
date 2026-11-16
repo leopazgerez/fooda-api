@@ -1,4 +1,4 @@
-package com.fooda.api.core.application.port.in;
+package com.fooda.api.catalog.application.port.in;
 
 import com.fooda.api.core.domain.catalog.Supplier;
 import com.fooda.api.shared.application.ListQuery;

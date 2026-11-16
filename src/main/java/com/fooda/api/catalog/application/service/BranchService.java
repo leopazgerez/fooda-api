@@ -1,7 +1,7 @@
-package com.fooda.api.core.application.service;
+package com.fooda.api.catalog.application.service;
 
-import com.fooda.api.core.application.port.in.BranchChanges;
-import com.fooda.api.core.application.port.in.BranchUseCase;
+import com.fooda.api.catalog.application.port.in.BranchChanges;
+import com.fooda.api.catalog.application.port.in.BranchUseCase;
 import com.fooda.api.core.application.port.out.BranchRepository;
 import com.fooda.api.core.domain.catalog.Branch;
 import com.fooda.api.shared.application.ListQuery;

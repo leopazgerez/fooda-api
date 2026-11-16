@@ -1,8 +1,8 @@
-package com.fooda.api.core.application.service;
+package com.fooda.api.catalog.application.service;
 
-import com.fooda.api.core.application.port.in.*;
+import com.fooda.api.catalog.application.port.in.*;
 import com.fooda.api.core.domain.catalog.*;
-import com.fooda.api.core.fakes.*;
+import com.fooda.api.catalog.fakes.*;
 import com.fooda.api.shared.DirectTransactions;
 import com.fooda.api.shared.application.Field;
 import com.fooda.api.shared.application.ListQuery;

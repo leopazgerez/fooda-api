@@ -1,7 +1,7 @@
-package com.fooda.api.core.application.service;
+package com.fooda.api.catalog.application.service;
 
-import com.fooda.api.core.application.port.in.ReserveFundChanges;
-import com.fooda.api.core.application.port.in.ReserveFundUseCase;
+import com.fooda.api.catalog.application.port.in.ReserveFundChanges;
+import com.fooda.api.catalog.application.port.in.ReserveFundUseCase;
 import com.fooda.api.core.application.port.out.ReserveFundRepository;
 import com.fooda.api.core.domain.catalog.ReserveFund;
 import com.fooda.api.shared.application.ListQuery;

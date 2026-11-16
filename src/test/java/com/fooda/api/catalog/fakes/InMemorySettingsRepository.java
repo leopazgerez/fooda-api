@@ -1,10 +1,8 @@
-package com.fooda.api.core.fakes;
+package com.fooda.api.catalog.fakes;
 
 import com.fooda.api.core.application.port.out.*;
 import com.fooda.api.core.domain.catalog.*;
 
-import java.math.BigDecimal;
-import java.time.LocalDate;
 import java.util.*;
 
 public class InMemorySettingsRepository implements SettingsRepository {
