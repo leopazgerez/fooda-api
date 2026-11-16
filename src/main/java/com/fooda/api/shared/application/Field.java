@@ -14,4 +14,8 @@ public record Field<T>(boolean present, T value) {
     public T or(T current) {
         return present ? value : current;
     }
+
+    public <R> Field<R> map(java.util.function.Function<T, R> f) {
+        return present && value != null ? Field.of(f.apply(value)) : new Field<>(present, null);
+    }
 }
