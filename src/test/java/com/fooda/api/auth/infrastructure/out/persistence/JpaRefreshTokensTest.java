@@ -1,5 +1,6 @@
 package com.fooda.api.auth.infrastructure.out.persistence;
 
+import com.fooda.api.support.Db;
 import com.fooda.api.TestcontainersConfiguration;
 import com.fooda.api.user.domain.Role;
 import com.fooda.api.user.domain.User;
@@ -38,7 +39,7 @@ class JpaRefreshTokensTest {
     @AfterEach
     void clean() {
         jdbc.update("DELETE FROM refresh_token");
-        jdbc.update("TRUNCATE app_user CASCADE");
+        Db.reset(jdbc);
     }
 
     private UserId user(String email) {

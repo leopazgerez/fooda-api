@@ -48,12 +48,12 @@ public class CatalogConfig {
                 LOG.info("APP_ADMIN_EMAIL not set: skipping catalog seed");
                 return;
             }
-            users.findByEmail(User.normalizeEmail(email)).ifPresent(admin ->
+            users.findByEmail(User.normalizeEmail(email)).ifPresentOrElse(admin ->
                     RunAs.user(admin.id().value(), () -> {
                         if (seed.seedIfEmpty()) {
                             LOG.info("Seeded initial settings and kitchen branch");
                         }
-                    }));
+                    }), () -> LOG.warn("Admin {} not found: skipping catalog seed", email));
         };
     }
 

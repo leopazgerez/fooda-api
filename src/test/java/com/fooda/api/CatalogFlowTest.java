@@ -2,11 +2,13 @@ package com.fooda.api;
 
 import com.fooda.api.catalog.application.service.CatalogSeed;
 import com.fooda.api.shared.infrastructure.RunAs;
+import com.fooda.api.support.Db;
 import com.fooda.api.user.application.port.out.PasswordHasher;
 import com.fooda.api.user.application.port.out.UserRepository;
 import com.fooda.api.user.domain.Role;
 import com.fooda.api.user.domain.User;
 import com.jayway.jsonpath.JsonPath;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -50,6 +52,11 @@ class CatalogFlowTest {
                 .orElseGet(() -> new User(null, ADMIN_EMAIL, "Admin", hash, Role.ADMIN, true, true)));
         // wiping app_user cascades to the catalog, so re-seed as the startup runner does
         RunAs.user(admin.id().value(), seed::seedIfEmpty);
+    }
+
+    @AfterEach
+    void clean() {
+        Db.reset(jdbc);
     }
 
     private String login(String email, String password) throws Exception {

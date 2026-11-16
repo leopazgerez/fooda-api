@@ -12,6 +12,7 @@ import com.fooda.api.core.domain.catalog.Supplier;
 import com.fooda.api.core.domain.catalog.Supply;
 import com.fooda.api.core.domain.catalog.Unit;
 import com.fooda.api.support.Actors;
+import com.fooda.api.support.Db;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -53,6 +54,7 @@ class DishPackPersistenceTest {
 
     @BeforeEach
     void setUp() {
+        Db.reset(jdbc);
         actor = Actors.insertUser(jdbc);
         Actors.actAs(actor);
         long supplierId = suppliers.save(new Supplier(null, "Súper", null, 1, null)).id();

@@ -4,9 +4,11 @@ import com.fooda.api.TestcontainersConfiguration;
 import com.fooda.api.config.JpaAuditingConfig;
 import com.fooda.api.config.TimeConfig;
 import com.fooda.api.support.Actors;
+import com.fooda.api.support.Db;
 import com.fooda.api.user.domain.Role;
 import com.fooda.api.user.domain.User;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
@@ -25,6 +27,11 @@ class UserAuditTest {
 
     @Autowired UserPersistenceAdapter users;
     @Autowired JdbcTemplate jdbc;
+
+    @BeforeEach
+    void reset() {
+        Db.reset(jdbc);
+    }
 
     @AfterEach
     void clear() {

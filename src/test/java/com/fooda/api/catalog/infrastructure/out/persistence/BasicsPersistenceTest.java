@@ -10,6 +10,7 @@ import com.fooda.api.core.domain.catalog.Shipping;
 import com.fooda.api.core.domain.catalog.ShippingType;
 import com.fooda.api.core.domain.catalog.Supplier;
 import com.fooda.api.support.Actors;
+import com.fooda.api.support.Db;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -49,6 +50,7 @@ class BasicsPersistenceTest {
 
     @BeforeEach
     void actor() {
+        Db.reset(jdbc);
         actor = Actors.insertUser(jdbc);
         Actors.actAs(actor);
     }

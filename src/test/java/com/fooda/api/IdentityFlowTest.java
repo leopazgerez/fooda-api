@@ -1,5 +1,6 @@
 package com.fooda.api;
 
+import com.fooda.api.support.Db;
 import com.fooda.api.support.CapturingEmailSender;
 import com.fooda.api.user.application.port.out.PasswordHasher;
 import com.fooda.api.user.application.port.out.UserRepository;
@@ -58,7 +59,7 @@ class IdentityFlowTest {
     void clean() {
         jdbc.update("DELETE FROM refresh_token");
         jdbc.update("DELETE FROM user_token");
-        jdbc.update("TRUNCATE app_user CASCADE");
+        Db.reset(jdbc);
     }
 
     /** Other test classes wipe app_user, so the bootstrap admin may be missing: make sure it is there. */

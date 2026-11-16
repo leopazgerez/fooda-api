@@ -2,6 +2,8 @@ package com.fooda.api.catalog;
 
 import com.fooda.api.TestcontainersConfiguration;
 import com.fooda.api.support.Actors;
+import com.fooda.api.support.Db;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
@@ -18,6 +20,11 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class CatalogSchemaTest {
 
     @Autowired JdbcTemplate jdbc;
+
+    @BeforeEach
+    void reset() {
+        Db.reset(jdbc);
+    }
 
     @Test
     void onlyOneLiveKitchen() {
