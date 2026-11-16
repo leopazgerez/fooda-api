@@ -6,9 +6,12 @@ import com.fooda.api.shared.domain.ValidationException;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Pattern;
 
 /** Reads a JSON body keeping "absent" and "null" apart; a value of the wrong type is a 400 on that key. */
 public final class PatchBody {
+
+    private static final Pattern WHOLE_NUMBER = Pattern.compile("-?\\d{1,19}");
 
     private final Map<String, Object> raw;
 
@@ -33,7 +36,23 @@ public final class PatchBody {
     }
 
     public Field<Long> id(String key) {
-        return read(key, Number.class, v -> whole(key, v).longValueExact());
+        // ids come from <select>s, so a numeric string is as good as a number
+        return read(key, Object.class, v -> {
+            if (v instanceof Number n) {
+                return whole(key, n).longValueExact();
+            }
+            if (v instanceof String t) {
+                String text = t.trim();
+                if (text.isEmpty()) {
+                    return null; // a cleared <select> sends "": same as null
+                }
+                // plain integers only: BigDecimal would parse "1e999999999" and blow up in setScale
+                if (WHOLE_NUMBER.matcher(text).matches()) {
+                    return Long.parseLong(text);
+                }
+            }
+            throw invalid(key);
+        });
     }
 
     @SuppressWarnings("unchecked")

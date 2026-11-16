@@ -7,6 +7,7 @@ import com.fooda.api.core.application.port.out.DishRepository;
 import com.fooda.api.core.application.port.out.PackRepository;
 import com.fooda.api.core.application.port.out.ProductionRepository;
 import com.fooda.api.core.application.port.out.SettingsRepository;
+import com.fooda.api.core.application.port.out.StockLock;
 import com.fooda.api.core.application.port.out.StockMovementRepository;
 import com.fooda.api.core.application.port.out.SupplyRepository;
 import com.fooda.api.core.domain.catalog.*;
@@ -32,18 +33,21 @@ public class PackService implements PackUseCase {
     private final SettingsRepository settings;
     private final ProductionRepository productions;
     private final StockMovementRepository movements;
+    private final StockLock stockLock;
     private final BusinessCalendar calendar;
     private final Transactions tx;
 
     public PackService(PackRepository packs, DishRepository dishes, SupplyRepository supplies,
                        SettingsRepository settings, ProductionRepository productions,
-                       StockMovementRepository movements, BusinessCalendar calendar, Transactions tx) {
+                       StockMovementRepository movements, StockLock stockLock, BusinessCalendar calendar,
+                       Transactions tx) {
         this.packs = packs;
         this.dishes = dishes;
         this.supplies = supplies;
         this.settings = settings;
         this.productions = productions;
         this.movements = movements;
+        this.stockLock = stockLock;
         this.calendar = calendar;
         this.tx = tx;
     }
@@ -80,6 +84,7 @@ public class PackService implements PackUseCase {
     @Override
     public void delete(long id, long actorId) {
         tx.run(() -> {
+            stockLock.lock();
             find(id);
             if (productions.isPackUsed(id) || movements.isPackUsed(id)) {
                 throw new ConflictException(null, "El pack está en uso; desactivalo en lugar de borrarlo");

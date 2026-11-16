@@ -21,6 +21,11 @@ public record Production(Long id, String code, int number, ProductionStatus stat
         leftovers = leftovers == null ? Map.of() : Map.copyOf(leftovers);
     }
 
+    /** The INICIAL lot (number 0) that holds stock loaded without a production. */
+    public boolean isInitial() {
+        return number == 0;
+    }
+
     public boolean isPlanned() {
         return status == ProductionStatus.PLANNED;
     }

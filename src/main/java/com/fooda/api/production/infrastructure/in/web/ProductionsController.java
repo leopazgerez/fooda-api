@@ -14,6 +14,7 @@ import com.fooda.api.shared.application.ListQuery;
 import com.fooda.api.shared.application.Page;
 import com.fooda.api.shared.domain.ValidationException;
 import com.fooda.api.shared.infrastructure.in.web.PatchBody;
+import com.fooda.api.shared.infrastructure.in.web.RequestBodies;
 import com.fooda.api.shared.infrastructure.in.web.Principals;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -101,10 +102,10 @@ public class ProductionsController {
     public ResponseEntity<ProductionResponse> plan(@AuthenticationPrincipal Jwt jwt,
                                                    @RequestBody Map<String, Object> body) {
         var b = new PatchBody(body);
-        var lines = Web.items(b, "lines").stream()
-                .map(l -> new ProductionUseCase.PlanLine(Web.id(l, "packId"), Web.integer(l, "planned"))).toList();
-        var r = response(productions.plan(lines, Web.date(b, "start"), Principals.userId(jwt)));
-        return Web.created(r.id(), r);
+        var lines = RequestBodies.items(b, "lines").stream()
+                .map(l -> new ProductionUseCase.PlanLine(RequestBodies.id(l, "packId"), RequestBodies.integer(l, "planned"))).toList();
+        var r = response(productions.plan(lines, RequestBodies.date(b, "start"), Principals.userId(jwt)));
+        return RequestBodies.created(r.id(), r);
     }
 
     @DeleteMapping("/{id}")
@@ -152,12 +153,12 @@ public class ProductionsController {
     public ProductionResponse close(@PathVariable long id,
                                     @RequestBody(required = false) Map<String, Object> body) {
         var b = new PatchBody(body);
-        var lines = Web.optionalItems(b, "lines").stream()
-                .map(l -> new CloseRequest.Actual(Web.id(l, "packId"), Web.integer(l, "actual"))).toList();
-        var distribution = Web.optionalItems(b, "distribution").stream()
-                .map(d -> new CloseRequest.Distribution(Web.id(d, "branchId"), Web.id(d, "packId"),
-                        Web.integer(d, "quantity"))).toList();
-        return response(productions.close(id, new CloseRequest(Web.date(b, "date"), lines, distribution)));
+        var lines = RequestBodies.optionalItems(b, "lines").stream()
+                .map(l -> new CloseRequest.Actual(RequestBodies.id(l, "packId"), RequestBodies.integer(l, "actual"))).toList();
+        var distribution = RequestBodies.optionalItems(b, "distribution").stream()
+                .map(d -> new CloseRequest.Distribution(RequestBodies.id(d, "branchId"), RequestBodies.id(d, "packId"),
+                        RequestBodies.integer(d, "quantity"))).toList();
+        return response(productions.close(id, new CloseRequest(RequestBodies.date(b, "date"), lines, distribution)));
     }
 
     @PostMapping("/{id}/reopen")

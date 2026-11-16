@@ -1,6 +1,7 @@
 package com.fooda.api.production.fakes;
 
 import com.fooda.api.core.application.port.out.StockMovementRepository;
+import com.fooda.api.core.domain.stock.MovementType;
 import com.fooda.api.core.domain.stock.StockMovement;
 
 import java.util.*;
@@ -21,6 +22,16 @@ public class InMemoryStockMovementRepository implements StockMovementRepository 
     @Override
     public List<StockMovement> findByProduction(long productionId) {
         return rows.values().stream().filter(m -> m.productionId() == productionId).toList();
+    }
+
+    @Override public List<StockMovement> findAll() { return List.copyOf(rows.values()); }
+
+    @Override public Optional<StockMovement> findById(long id) { return Optional.ofNullable(rows.get(id)); }
+
+    @Override
+    public List<StockMovement> findTransferLegs(long transferId) {
+        return rows.values().stream().filter(m -> m.refId() != null && m.refId() == transferId
+                && (m.type() == MovementType.TRANSFER_OUT || m.type() == MovementType.TRANSFER_IN)).toList();
     }
 
     @Override public void softDelete(long movementId, long actorId) { rows.remove(movementId); }

@@ -16,6 +16,10 @@ public class InMemoryProductionRepository implements ProductionRepository {
 
     @Override public Optional<Production> findById(long id) { return Optional.ofNullable(rows.get(id)); }
 
+    @Override public Optional<Production> findInitial() {
+        return rows.values().stream().filter(p -> p.number() == 0).findFirst();
+    }
+
     @Override
     public Production save(Production p) {
         long id = p.id() != null ? p.id() : ++seq;

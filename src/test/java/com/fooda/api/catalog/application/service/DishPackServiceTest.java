@@ -1,5 +1,6 @@
 package com.fooda.api.catalog.application.service;
 
+import com.fooda.api.production.fakes.NoopStockLock;
 import com.fooda.api.core.domain.production.Production;
 import com.fooda.api.core.domain.production.ProductionLine;
 import com.fooda.api.core.domain.production.ProductionStatus;
@@ -44,7 +45,7 @@ class DishPackServiceTest {
     private final InMemoryProductionRepository productionRepo = new InMemoryProductionRepository();
     private final InMemoryStockMovementRepository movementRepo = new InMemoryStockMovementRepository();
     private final PackUseCase packs = new PackService(packRepo, dishRepo, supplyRepo, settingsRepo, productionRepo,
-            movementRepo, calendar, new DirectTransactions());
+            movementRepo, new NoopStockLock(), calendar, new DirectTransactions());
 
     {
         // Subset of the CostsTest fixture (port of costos.test.ts) used by ravioles and canelones.
@@ -240,7 +241,7 @@ class DishPackServiceTest {
     @Test void packViewsNeedSettings() {
         long id = packs.create("Pack").pack().id();
         var empty = new PackService(packRepo, dishRepo, supplyRepo, new InMemorySettingsRepository(),
-                productionRepo, movementRepo, calendar, new DirectTransactions());
+                productionRepo, movementRepo, new NoopStockLock(), calendar, new DirectTransactions());
         assertThatThrownBy(() -> empty.get(id))
                 .isInstanceOf(ResourceNotFoundException.class).hasMessage("Todavía no se cargaron los parámetros");
     }

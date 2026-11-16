@@ -233,7 +233,7 @@ public class ProductionService implements ProductionUseCase {
             if (day.isAfter(calendar.today())) {
                 throw new ValidationException("date", "La fecha de cierre no puede ser futura");
             }
-            openMonth(day);
+            monthCloses.requireOpen(day);
             Map<Long, Integer> actuals = new HashMap<>();
             for (CloseRequest.Actual a : r.lines()) {
                 inProduction(p, a.packId(), LINES);
@@ -301,8 +301,8 @@ public class ProductionService implements ProductionUseCase {
             if (p.status() != ProductionStatus.CLOSED) {
                 throw new ConflictException("status", "La producción no está cerrada");
             }
-            openMonth(p.closedOn());
-            if (p.number() == 0) {
+            monthCloses.requireOpen(p.closedOn());
+            if (p.isInitial()) {
                 throw new ConflictException("status", "El lote inicial no se reabre");
             }
             List<Transfer> distribution = transfers.findBySourceProduction(id);
@@ -329,12 +329,6 @@ public class ProductionService implements ProductionUseCase {
             case TRANSFER_OUT, TRANSFER_IN -> distributionIds.contains(m.refId());
             default -> false;
         };
-    }
-
-    private void openMonth(LocalDate date) {
-        if (monthCloses.find(YearMonth.from(date)).isPresent()) {
-            throw new ConflictException("date", "Ese mes está cerrado");
-        }
     }
 
     private void inProduction(Production p, long packId, String field) {

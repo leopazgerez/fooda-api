@@ -112,6 +112,23 @@ Errores: siempre JSON `{message, status, timestamp}` y, si aplica, `field` (por 
 
 Mientras no existan las ventas (bloque 4), `sold` y `payback` valen 0, y hasta el bloque 5 ningún mes figura como cerrado.
 
+### Stock
+
+`GET` con `STOCK_READ`; el resto con `STOCK_WRITE` (hoy solo `ADMIN`). El stock es un libro de movimientos por sede, lote y pack; la salida es FIFO por lote. Los ids en los cuerpos aceptan número o texto numérico; las cantidades, solo números enteros.
+
+| Método y ruta | Qué hace |
+|---|---|
+| `GET /api/stock?branchId=&packId=&productionId=` | `{rows:[{branchId, branch, productionId, lot, lotDate, packId, pack, quantity, price}], byBranch:[{branchId, branch, total, capacity, freeSlots, alerts}]}` |
+| `GET /api/transfers` | Traslados paginados |
+| `POST /api/transfers` `{date?, originBranchId, destinationBranchId, notes?, lines:[{productionId, packId, quantity}]}` | 201. 400 si no hay stock suficiente en el lote |
+| `DELETE /api/transfers/{id}` | 204, anula el traslado |
+| `POST /api/stock-adjustments` `{date?, branchId, packId, productionId?, quantity, reason}` | 201. `quantity` entero distinto de cero (puede ser negativa) |
+| `DELETE /api/stock-adjustments/{id}` | 204, anula el ajuste |
+
+- **Lote `INICIAL`:** un ajuste sin `productionId` usa el lote `INICIAL` (número 0, `packs` 0, ya cerrado), que se crea la primera vez y aparece en `GET /api/productions`. Nunca se anula ni se reabre.
+- **Anulaciones, 409 cuando:** el traslado es el de reparto de una producción (se revierte reabriendo la producción); la sede destino ya no tiene los packs que recibió; anular un ajuste deja el stock en negativo; la fecha cae en un mes cerrado. Reabrir una producción también da 409 si hay un traslado manual vivo desde su lote.
+- Las reglas viven en `core/domain/stock/StockRules`; el flujo completo está en `StockFlowTest`.
+
 ### Cosas a tener en cuenta
 
 - **Logout:** solo revoca el refresh token. El access token sigue valiendo hasta 15 minutos después del logout (lo que dure `APP_JWT_ACCESS_TTL`).

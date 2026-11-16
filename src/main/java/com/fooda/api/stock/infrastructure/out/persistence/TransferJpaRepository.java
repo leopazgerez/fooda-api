@@ -10,6 +10,8 @@ import java.util.List;
 
 interface TransferJpaRepository extends JpaRepository<TransferJpaEntity, Long> {
 
+    List<TransferJpaEntity> findAllByOrderById();
+
     List<TransferJpaEntity> findBySourceProductionIdOrderById(long productionId);
 
     @Query("select t from TransferJpaEntity t where t.id in "

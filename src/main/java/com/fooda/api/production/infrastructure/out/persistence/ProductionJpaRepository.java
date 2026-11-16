@@ -10,6 +10,8 @@ import java.time.LocalDate;
 
 interface ProductionJpaRepository extends JpaRepository<ProductionJpaEntity, Long> {
 
+    java.util.Optional<ProductionJpaEntity> findFirstByNumberOrderById(int number);
+
     /** Native so @SQLRestriction does not hide annulled rows. */
     @Query(value = "select coalesce(max(number), 0) from production where start_date >= :from and start_date < :to",
             nativeQuery = true)

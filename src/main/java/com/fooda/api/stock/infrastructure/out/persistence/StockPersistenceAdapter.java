@@ -8,6 +8,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
 import java.util.List;
+import java.util.Optional;
 
 @Component
 public class StockPersistenceAdapter implements StockMovementRepository {
@@ -39,6 +40,26 @@ public class StockPersistenceAdapter implements StockMovementRepository {
     @Transactional(readOnly = true)
     public List<StockMovement> findByProduction(long productionId) {
         return movements.findByProductionIdOrderById(productionId).stream().map(StockPersistenceAdapter::toDomain).toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<StockMovement> findAll() {
+        return movements.findAllByOrderById().stream().map(StockPersistenceAdapter::toDomain).toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<StockMovement> findById(long id) {
+        return movements.findById(id).map(StockPersistenceAdapter::toDomain);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<StockMovement> findTransferLegs(long transferId) {
+        return movements.findByRefIdAndTypeInOrderById(transferId,
+                        List.of(MovementType.TRANSFER_OUT.code(), MovementType.TRANSFER_IN.code()))
+                .stream().map(StockPersistenceAdapter::toDomain).toList();
     }
 
     @Override

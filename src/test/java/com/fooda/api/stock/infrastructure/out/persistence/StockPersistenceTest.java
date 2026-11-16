@@ -126,6 +126,51 @@ class StockPersistenceTest {
     }
 
     @Test
+    void findAllAndFindByIdIgnoreDeletedMovements() {
+        StockMovement a = movements.add(new StockMovement(null, LocalDate.of(2026, 3, 1), kitchen, lot, pack, 10, MovementType.PRODUCTION, null, null));
+        StockMovement b = movements.add(new StockMovement(null, LocalDate.of(2026, 3, 2), kitchen, lot, pack, -2, MovementType.ADJUSTMENT, null, "x"));
+        reload();
+        assertThat(movements.findAll()).extracting(StockMovement::id).containsExactly(a.id(), b.id());
+
+        movements.softDelete(a.id(), actor);
+        reload();
+        assertThat(movements.findAll()).extracting(StockMovement::id).containsExactly(b.id());
+        assertThat(movements.findById(a.id())).isEmpty();
+        assertThat(movements.findById(b.id())).isPresent();
+    }
+
+    @Test
+    void findTransferLegsReturnsOnlyThatTransfersLiveLegs() {
+        long ref = 77L;
+        StockMovement out = movements.add(new StockMovement(null, LocalDate.of(2026, 3, 1), kitchen, lot, pack, -4, MovementType.TRANSFER_OUT, ref, null));
+        StockMovement in = movements.add(new StockMovement(null, LocalDate.of(2026, 3, 1), shop, lot, pack, 4, MovementType.TRANSFER_IN, ref, null));
+        StockMovement dead = movements.add(new StockMovement(null, LocalDate.of(2026, 3, 1), shop, lot, pack, 1, MovementType.TRANSFER_IN, ref, null));
+        movements.add(new StockMovement(null, LocalDate.of(2026, 3, 1), kitchen, lot, pack, 5, MovementType.PRODUCTION, ref, null));
+        movements.add(new StockMovement(null, LocalDate.of(2026, 3, 1), shop, lot, pack, 1, MovementType.TRANSFER_IN, ref + 1, null));
+        movements.softDelete(dead.id(), actor);
+        reload();
+
+        assertThat(movements.findTransferLegs(ref)).extracting(StockMovement::id).containsExactly(out.id(), in.id());
+    }
+
+    @Test
+    void transferFindAllAndFindByIdSkipDeleted() {
+        Transfer a = transfers.add(new Transfer(null, LocalDate.of(2026, 3, 5), kitchen, shop, null, null,
+                List.of(new TransferLine(lot, pack, 4))));
+        Transfer b = transfers.add(new Transfer(null, LocalDate.of(2026, 3, 6), kitchen, shop, null, null,
+                List.of(new TransferLine(lot, pack, 1), new TransferLine(otherLot, pack, 2))));
+        reload();
+        assertThat(transfers.findAll()).extracting(Transfer::id).containsExactly(a.id(), b.id());
+
+        transfers.softDelete(a.id(), actor);
+        reload();
+        assertThat(transfers.findAll()).hasSize(1);
+        assertThat(transfers.findAll().get(0).lines()).hasSize(2);
+        assertThat(transfers.findById(a.id())).isEmpty();
+        assertThat(transfers.findById(b.id()).orElseThrow().lines()).hasSize(2);
+    }
+
+    @Test
     @Transactional(propagation = Propagation.NOT_SUPPORTED)
     void advisoryLockOutsideTransactionFails() {
         assertThatThrownBy(lock::lock).isInstanceOf(IllegalStateException.class);

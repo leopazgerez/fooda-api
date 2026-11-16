@@ -38,4 +38,30 @@ class PatchBodyTest {
         assertThat(b.id("id").value()).isEqualTo(7L);
         assertThatThrownBy(() -> b.integer("d")).isInstanceOf(ValidationException.class);
     }
+
+    @Test
+    void idAcceptsPlainIntegerText() {
+        assertThat(new PatchBody(Map.of("id", "7")).id("id").value()).isEqualTo(7L);
+        assertThat(new PatchBody(Map.of("id", " 7 ")).id("id").value()).isEqualTo(7L);
+    }
+
+    @Test
+    void blankIdIsPresentNull() {
+        for (String blank : new String[]{"", "  "}) {
+            var f = new PatchBody(Map.of("id", blank)).id("id");
+            assertThat(f.present()).isTrue();
+            assertThat(f.value()).isNull();
+        }
+    }
+
+    @Test
+    void idRejectsOtherTextAndTypesQuickly() {
+        for (Object bad : new Object[]{"abc", "1.5", true, "1e999999999", "99999999999999999999"}) {
+            var b = new PatchBody(Map.of("id", bad));
+            long t0 = System.nanoTime();
+            assertThatThrownBy(() -> b.id("id")).isInstanceOfSatisfying(ValidationException.class,
+                    e -> assertThat(e.field()).isEqualTo("id"));
+            assertThat(System.nanoTime() - t0).isLessThan(500_000_000L);
+        }
+    }
 }

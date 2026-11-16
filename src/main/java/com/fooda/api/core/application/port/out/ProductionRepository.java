@@ -15,6 +15,9 @@ public interface ProductionRepository {
 
     Optional<Production> findById(long id);
 
+    /** The live INICIAL lot (number 0), if it was created. */
+    Optional<Production> findInitial();
+
     /** Saves the row; if the lines changed, soft-deletes the live lines and inserts the new ones. */
     Production save(Production p);
 

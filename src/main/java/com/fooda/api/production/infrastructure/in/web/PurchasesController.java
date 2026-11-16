@@ -7,6 +7,7 @@ import com.fooda.api.production.application.port.in.PurchaseView;
 import com.fooda.api.shared.application.ListQuery;
 import com.fooda.api.shared.application.Page;
 import com.fooda.api.shared.infrastructure.in.web.PatchBody;
+import com.fooda.api.shared.infrastructure.in.web.RequestBodies;
 import com.fooda.api.shared.infrastructure.in.web.Principals;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -68,15 +69,15 @@ public class PurchasesController {
     @PreAuthorize("hasAuthority('PRODUCTION_WRITE')")
     public ResponseEntity<BoughtResponse> buyLoose(@RequestBody Map<String, Object> body) {
         var b = new PatchBody(body);
-        var r = response(purchases.buyLoose(Web.id(b, "supplierId"), Web.date(b, "date"), Web.purchaseLines(b)));
-        return Web.created(r.purchase().id(), r);
+        var r = response(purchases.buyLoose(RequestBodies.id(b, "supplierId"), RequestBodies.date(b, "date"), Web.purchaseLines(b)));
+        return RequestBodies.created(r.purchase().id(), r);
     }
 
     @PostMapping("/{id}/buy")
     @PreAuthorize("hasAuthority('PRODUCTION_WRITE')")
     public BoughtResponse buy(@PathVariable long id, @RequestBody Map<String, Object> body) {
         var b = new PatchBody(body);
-        return response(purchases.buy(id, Web.date(b, "date"), Web.purchaseLines(b)));
+        return response(purchases.buy(id, RequestBodies.date(b, "date"), Web.purchaseLines(b)));
     }
 
     @DeleteMapping("/{id}")

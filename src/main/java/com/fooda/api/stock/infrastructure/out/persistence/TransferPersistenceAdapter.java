@@ -11,6 +11,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 @Component
 public class TransferPersistenceAdapter implements TransferRepository {
@@ -56,6 +57,18 @@ public class TransferPersistenceAdapter implements TransferRepository {
     @Transactional(readOnly = true)
     public List<Transfer> findContainingProduction(long productionId) {
         return withLines(transfers.findContainingProduction(productionId));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Transfer> findAll() {
+        return withLines(transfers.findAllByOrderById());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<Transfer> findById(long id) {
+        return transfers.findById(id).map(e -> withLines(List.of(e)).get(0));
     }
 
     @Override

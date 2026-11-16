@@ -125,7 +125,7 @@ public class PurchaseService implements PurchaseUseCase {
             if (p.status() != PurchaseStatus.BOUGHT) {
                 throw new ConflictException("status", "La compra no está registrada");
             }
-            openMonth(p.date());
+            monthCloses.requireOpen(p.date());
             expenses.findByPurchase(id).ifPresent(e -> expenses.softDelete(e.id(), actorId));
             supplies.softDeletePurchasePrices(id, actorId);
             if (p.productionId() == null) {
@@ -183,7 +183,7 @@ public class PurchaseService implements PurchaseUseCase {
                 throw new ResourceNotFoundException("Insumo no encontrado");
             }
         }
-        openMonth(day);
+        monthCloses.requireOpen(day);
         Production prod = p.productionId() == null ? null : production(p.productionId());
         List<Supply> governing = governing(prod, live);
         BigDecimal total = ProductionRules.purchaseAmount(governing, lines);
@@ -241,12 +241,6 @@ public class PurchaseService implements PurchaseUseCase {
     private Production withPaidCosts(Production p, Map<Long, BigDecimal> paid) {
         return productions.save(new Production(p.id(), p.code(), p.number(), p.status(), p.start(), p.closedOn(),
                 p.lines(), p.snapshot(), paid, p.leftovers(), p.version()));
-    }
-
-    private void openMonth(LocalDate date) {
-        if (monthCloses.find(YearMonth.from(date)).isPresent()) {
-            throw new ConflictException("date", "Ese mes está cerrado");
-        }
     }
 
     private Production production(long id) {

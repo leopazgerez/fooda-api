@@ -72,6 +72,12 @@ public class ProductionPersistenceAdapter implements ProductionRepository {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public Optional<Production> findInitial() {
+        return productions.findFirstByNumberOrderById(0).map(e -> toDomain(e, linesOf(e.id)));
+    }
+
+    @Override
     @Transactional
     public Production save(Production p) {
         ProductionJpaEntity e = new ProductionJpaEntity();

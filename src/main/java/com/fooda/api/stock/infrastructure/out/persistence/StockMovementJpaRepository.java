@@ -12,6 +12,10 @@ interface StockMovementJpaRepository extends JpaRepository<StockMovementJpaEntit
 
     List<StockMovementJpaEntity> findByProductionIdOrderById(long productionId);
 
+    List<StockMovementJpaEntity> findAllByOrderById();
+
+    List<StockMovementJpaEntity> findByRefIdAndTypeInOrderById(long refId, List<String> types);
+
     boolean existsByPackId(long packId);
 
     boolean existsByBranchId(long branchId);

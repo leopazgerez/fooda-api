@@ -30,5 +30,9 @@ public class InMemoryTransferRepository implements TransferRepository {
                 .filter(t -> t.lines().stream().anyMatch(l -> l.productionId() == productionId)).toList();
     }
 
+    @Override public List<Transfer> findAll() { return List.copyOf(rows.values()); }
+
+    @Override public Optional<Transfer> findById(long id) { return Optional.ofNullable(rows.get(id)); }
+
     @Override public void softDelete(long id, long actorId) { rows.remove(id); }
 }

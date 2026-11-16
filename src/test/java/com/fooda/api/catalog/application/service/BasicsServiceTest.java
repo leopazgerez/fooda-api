@@ -1,5 +1,6 @@
 package com.fooda.api.catalog.application.service;
 
+import com.fooda.api.production.fakes.NoopStockLock;
 import com.fooda.api.catalog.application.port.in.*;
 import com.fooda.api.core.domain.catalog.*;
 import com.fooda.api.catalog.fakes.*;
@@ -34,7 +35,7 @@ class BasicsServiceTest {
     private final InMemoryPurchaseRepository purchaseRepo = new InMemoryPurchaseRepository();
     private final InMemoryStockMovementRepository movementRepo = new InMemoryStockMovementRepository();
     private final SupplierUseCase suppliers = new SupplierService(supplierRepo, supplyRepo, purchaseRepo, tx);
-    private final BranchUseCase branches = new BranchService(branchRepo, movementRepo, tx);
+    private final BranchUseCase branches = new BranchService(branchRepo, movementRepo, new NoopStockLock(), tx);
     private final ReserveFundUseCase funds = new ReserveFundService(new InMemoryReserveFundRepository(), tx);
     private final SettingsUseCase settings = new SettingsService(settingsRepo, supplyRepo, tx);
 

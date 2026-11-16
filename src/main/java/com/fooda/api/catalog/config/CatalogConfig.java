@@ -14,6 +14,7 @@ import com.fooda.api.core.application.port.out.ProductionRepository;
 import com.fooda.api.core.application.port.out.PurchaseRepository;
 import com.fooda.api.core.application.port.out.ReserveFundRepository;
 import com.fooda.api.core.application.port.out.SettingsRepository;
+import com.fooda.api.core.application.port.out.StockLock;
 import com.fooda.api.core.application.port.out.StockMovementRepository;
 import com.fooda.api.core.application.port.out.SupplierRepository;
 import com.fooda.api.core.application.port.out.SupplyRepository;
@@ -67,8 +68,9 @@ public class CatalogConfig {
     }
 
     @Bean
-    BranchService branchService(BranchRepository branches, StockMovementRepository movements, Transactions tx) {
-        return new BranchService(branches, movements, tx);
+    BranchService branchService(BranchRepository branches, StockMovementRepository movements, StockLock stockLock,
+                                Transactions tx) {
+        return new BranchService(branches, movements, stockLock, tx);
     }
 
     @Bean
@@ -97,7 +99,8 @@ public class CatalogConfig {
     @Bean
     PackService packService(PackRepository packs, DishRepository dishes, SupplyRepository supplies,
                             SettingsRepository settings, ProductionRepository productions,
-                            StockMovementRepository movements, BusinessCalendar calendar, Transactions tx) {
-        return new PackService(packs, dishes, supplies, settings, productions, movements, calendar, tx);
+                            StockMovementRepository movements, StockLock stockLock, BusinessCalendar calendar,
+                            Transactions tx) {
+        return new PackService(packs, dishes, supplies, settings, productions, movements, stockLock, calendar, tx);
     }
 }

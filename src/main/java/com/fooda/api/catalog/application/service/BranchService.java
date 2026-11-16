@@ -3,6 +3,7 @@ package com.fooda.api.catalog.application.service;
 import com.fooda.api.catalog.application.port.in.BranchChanges;
 import com.fooda.api.catalog.application.port.in.BranchUseCase;
 import com.fooda.api.core.application.port.out.BranchRepository;
+import com.fooda.api.core.application.port.out.StockLock;
 import com.fooda.api.core.application.port.out.StockMovementRepository;
 import com.fooda.api.core.domain.catalog.Branch;
 import com.fooda.api.shared.application.ListQuery;
@@ -24,11 +25,14 @@ public class BranchService implements BranchUseCase {
 
     private final BranchRepository branches;
     private final StockMovementRepository movements;
+    private final StockLock stockLock;
     private final Transactions tx;
 
-    public BranchService(BranchRepository branches, StockMovementRepository movements, Transactions tx) {
+    public BranchService(BranchRepository branches, StockMovementRepository movements, StockLock stockLock,
+                         Transactions tx) {
         this.branches = branches;
         this.movements = movements;
+        this.stockLock = stockLock;
         this.tx = tx;
     }
 
@@ -66,6 +70,7 @@ public class BranchService implements BranchUseCase {
     @Override
     public void delete(long id, long actorId) {
         tx.run(() -> {
+            stockLock.lock();
             if (get(id).kitchen()) {
                 throw new ConflictException(null, "No se puede borrar la sede cocina");
             }
