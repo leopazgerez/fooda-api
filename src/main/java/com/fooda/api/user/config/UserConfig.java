@@ -12,6 +12,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.annotation.Order;
 import org.springframework.dao.DataIntegrityViolationException;
 
 /** Factory for the user module. UserService is the single bean behind ProfileUseCase and ManageUsersUseCase. */
@@ -26,6 +27,7 @@ public class UserConfig {
     }
 
     @Bean
+    @Order(0)
     ApplicationRunner adminBootstrap(ManageUsersUseCase manage,
                                      @Value("${app.admin.email:}") String email,
                                      @Value("${app.admin.password:}") String password,

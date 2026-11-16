@@ -58,7 +58,7 @@ class IdentityFlowTest {
     void clean() {
         jdbc.update("DELETE FROM refresh_token");
         jdbc.update("DELETE FROM user_token");
-        jdbc.update("DELETE FROM app_user");
+        jdbc.update("TRUNCATE app_user CASCADE");
     }
 
     /** Other test classes wipe app_user, so the bootstrap admin may be missing: make sure it is there. */

@@ -70,6 +70,22 @@ Con permiso `USERS_READ` (los `GET`) o `USERS_WRITE` (`POST` y `PATCH`); hoy sol
 | `POST /api/users` | 201, crea un usuario (con rol) |
 | `PATCH /api/users/{id}` `{fullName, role, active}` | Cambia nombre, rol o estado. Un admin no puede desactivarse ni quitarse el rol a sí mismo (409). Desactivar a alguien revoca sus sesiones |
 
+### Catálogo
+
+Con permiso `CATALOG_READ` (los `GET`) o `CATALOG_WRITE` (`POST`, `PATCH`, `DELETE`); `PUT /api/settings` pide `SETTINGS_WRITE`. Hoy solo los tiene `ADMIN`. Los `DELETE` son borrado lógico y dan 409 si el recurso está en uso.
+
+| Recurso | Rutas |
+|---|---|
+| Proveedores | `/api/suppliers` (CRUD) |
+| Insumos | `/api/supplies` (CRUD), `/api/supplies/{id}/prices` (historial de precios) |
+| Platos | `/api/dishes` (CRUD) con receta `[{supplyId, quantity, unit, portions?}]` |
+| Packs | `/api/packs` (CRUD), `/api/packs/{id}/versions` (5 menús por versión). `GET /api/packs/{id}` devuelve `cost` y `salePrice` |
+| Sucursales | `/api/branches` (CRUD) |
+| Fondos de reserva | `/api/reserve-funds` (CRUD) |
+| Configuración | `GET`/`PUT /api/settings` |
+
+Al arrancar, si `APP_ADMIN_EMAIL` está definido y no hay configuración, se siembran la configuración por defecto (pack a 45000, etc.) y la sucursal cocina "Salta", registradas a nombre del admin.
+
 Errores: siempre JSON `{message, status, timestamp}` y, si aplica, `field` (por ejemplo 409 con `field: "email"` si un admin crea un usuario con un email que ya existe). Si dos operaciones modifican el mismo usuario a la vez, la segunda recibe 409 y tiene que reintentar.
 
 ### Cosas a tener en cuenta
@@ -83,11 +99,11 @@ Errores: siempre JSON `{message, status, timestamp}` y, si aplica, `field` (por 
 Los endpoints piden **permisos**, no roles. Cada rol declara los suyos en `user/domain/Role.java`:
 
 ```java
-ADMIN(EnumSet.allOf(Permission.class)),
+ADMIN(EnumSet.allOf(Permission.class)), // USERS_*, CATALOG_READ, CATALOG_WRITE, SETTINGS_WRITE
 USER(EnumSet.noneOf(Permission.class));
 ```
 
-- En cada request se lee el rol del usuario desde la base y se convierte en authorities: `ROLE_<rol>` más un authority por permiso (`USERS_READ`, ...). Cambiar el rol de alguien surte efecto en el próximo request.
+- En cada request se lee el rol del usuario desde la base y se convierte en authorities: `ROLE_<rol>` más un authority por permiso (`USERS_READ`, `CATALOG_READ`, ...). Cambiar el rol de alguien surte efecto en el próximo request.
 - En el controller: `@PreAuthorize("hasAuthority('USERS_WRITE')")`. Si falta el permiso, 403 JSON.
 - **Permiso nuevo:** agregalo a `user/domain/Permission.java`, asignalo a los roles en `Role.java` y usalo en `@PreAuthorize`.
 - **Rol nuevo:** agregalo a `Role.java` con sus permisos y al `CHECK` de `app_user.role` (con una migración nueva que reemplace el constraint).

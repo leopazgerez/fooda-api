@@ -38,7 +38,7 @@ class JpaRefreshTokensTest {
     @AfterEach
     void clean() {
         jdbc.update("DELETE FROM refresh_token");
-        jdbc.update("DELETE FROM app_user");
+        jdbc.update("TRUNCATE app_user CASCADE");
     }
 
     private UserId user(String email) {
