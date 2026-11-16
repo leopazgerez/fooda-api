@@ -10,8 +10,11 @@ import com.fooda.api.catalog.application.service.SupplyService;
 import com.fooda.api.core.application.port.out.BranchRepository;
 import com.fooda.api.core.application.port.out.DishRepository;
 import com.fooda.api.core.application.port.out.PackRepository;
+import com.fooda.api.core.application.port.out.ProductionRepository;
+import com.fooda.api.core.application.port.out.PurchaseRepository;
 import com.fooda.api.core.application.port.out.ReserveFundRepository;
 import com.fooda.api.core.application.port.out.SettingsRepository;
+import com.fooda.api.core.application.port.out.StockMovementRepository;
 import com.fooda.api.core.application.port.out.SupplierRepository;
 import com.fooda.api.core.application.port.out.SupplyRepository;
 import com.fooda.api.shared.application.BusinessCalendar;
@@ -58,13 +61,14 @@ public class CatalogConfig {
     }
 
     @Bean
-    SupplierService supplierService(SupplierRepository suppliers, SupplyRepository supplies, Transactions tx) {
-        return new SupplierService(suppliers, supplies, tx);
+    SupplierService supplierService(SupplierRepository suppliers, SupplyRepository supplies,
+                                    PurchaseRepository purchases, Transactions tx) {
+        return new SupplierService(suppliers, supplies, purchases, tx);
     }
 
     @Bean
-    BranchService branchService(BranchRepository branches, Transactions tx) {
-        return new BranchService(branches, tx);
+    BranchService branchService(BranchRepository branches, StockMovementRepository movements, Transactions tx) {
+        return new BranchService(branches, movements, tx);
     }
 
     @Bean
@@ -79,8 +83,9 @@ public class CatalogConfig {
 
     @Bean
     SupplyService supplyService(SupplyRepository supplies, SupplierRepository suppliers, DishRepository dishes,
-                                SettingsRepository settings, BusinessCalendar calendar, Transactions tx) {
-        return new SupplyService(supplies, suppliers, dishes, settings, calendar, tx);
+                                SettingsRepository settings, PurchaseRepository purchases, BusinessCalendar calendar,
+                                Transactions tx) {
+        return new SupplyService(supplies, suppliers, dishes, settings, purchases, calendar, tx);
     }
 
     @Bean
@@ -91,7 +96,8 @@ public class CatalogConfig {
 
     @Bean
     PackService packService(PackRepository packs, DishRepository dishes, SupplyRepository supplies,
-                            SettingsRepository settings, BusinessCalendar calendar, Transactions tx) {
-        return new PackService(packs, dishes, supplies, settings, calendar, tx);
+                            SettingsRepository settings, ProductionRepository productions,
+                            StockMovementRepository movements, BusinessCalendar calendar, Transactions tx) {
+        return new PackService(packs, dishes, supplies, settings, productions, movements, calendar, tx);
     }
 }

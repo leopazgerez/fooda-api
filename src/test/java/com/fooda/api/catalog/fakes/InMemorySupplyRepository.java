@@ -11,6 +11,7 @@ public class InMemorySupplyRepository implements SupplyRepository {
     private final Map<Long, SupplyPrice> prices = new LinkedHashMap<>();
     private long seq;
     private long priceSeq;
+    private final Map<Long, Long> purchaseOfPrice = new HashMap<>();
 
     @Override public List<Supply> findAll() { return List.copyOf(rows.values()); }
 
@@ -57,6 +58,18 @@ public class InMemorySupplyRepository implements SupplyRepository {
         var saved = new SupplyPrice(++priceSeq, p.supplyId(), p.date(), p.packagePrice());
         prices.put(saved.id(), saved);
         return saved;
+    }
+
+    @Override
+    public SupplyPrice addPurchasePrice(SupplyPrice p, long purchaseId) {
+        var saved = addPrice(p);
+        purchaseOfPrice.put(saved.id(), purchaseId);
+        return saved;
+    }
+
+    @Override
+    public void softDeletePurchasePrices(long purchaseId, long actorId) {
+        prices.keySet().removeIf(id -> Long.valueOf(purchaseId).equals(purchaseOfPrice.get(id)));
     }
 
     @Override public Optional<SupplyPrice> findPrice(long priceId) { return Optional.ofNullable(prices.get(priceId)); }

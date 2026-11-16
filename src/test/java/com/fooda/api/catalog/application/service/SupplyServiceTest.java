@@ -1,5 +1,9 @@
 package com.fooda.api.catalog.application.service;
 
+import com.fooda.api.core.domain.production.Purchase;
+import com.fooda.api.core.domain.production.PurchaseLine;
+import com.fooda.api.core.domain.production.PurchaseStatus;
+import com.fooda.api.production.fakes.InMemoryPurchaseRepository;
 import com.fooda.api.catalog.application.port.in.*;
 import com.fooda.api.catalog.fakes.*;
 import com.fooda.api.core.domain.catalog.*;
@@ -32,8 +36,9 @@ class SupplyServiceTest {
     private final InMemorySettingsRepository settingsRepo = new InMemorySettingsRepository();
     private final BusinessCalendar calendar =
             new BusinessCalendar(Clock.fixed(Instant.parse("2026-11-15T15:00:00Z"), ZoneOffset.UTC));
+    private final InMemoryPurchaseRepository purchaseRepo = new InMemoryPurchaseRepository();
     private final SupplyUseCase service = new SupplyService(supplyRepo, supplierRepo, dishRepo, settingsRepo,
-            calendar, new DirectTransactions());
+            purchaseRepo, calendar, new DirectTransactions());
     private final long supplierId = supplierRepo.save(new Supplier(null, "Súper", null, 1, null)).id();
 
     private NewSupply newSupply(String name) {
@@ -93,6 +98,15 @@ class SupplyServiceTest {
             assertThatThrownBy(() -> service.delete(id, 1L)).isInstanceOf(ConflictException.class);
             assertThat(service.get(id)).isNotNull();
         }
+    }
+
+    @Test void supplyInAPurchaseCannotBeDeleted() {
+        long id = service.create(newSupply("Harina")).supply().id();
+        purchaseRepo.save(new Purchase(null, null, supplierId, PurchaseStatus.PENDING, null,
+                List.of(new PurchaseLine(id, BigDecimal.ONE, BigDecimal.TEN)), null, null));
+        assertThatThrownBy(() -> service.delete(id, 1L)).isInstanceOf(ConflictException.class)
+                .hasMessage("El insumo está en uso; desactivalo en lugar de borrarlo");
+        assertThat(service.get(id)).isNotNull();
     }
 
     @Test void compositeOfCompositeIs400() {

@@ -3,6 +3,7 @@ package com.fooda.api.catalog.application.service;
 import com.fooda.api.catalog.application.port.in.BranchChanges;
 import com.fooda.api.catalog.application.port.in.BranchUseCase;
 import com.fooda.api.core.application.port.out.BranchRepository;
+import com.fooda.api.core.application.port.out.StockMovementRepository;
 import com.fooda.api.core.domain.catalog.Branch;
 import com.fooda.api.shared.application.ListQuery;
 import com.fooda.api.shared.application.Listing;
@@ -22,10 +23,12 @@ public class BranchService implements BranchUseCase {
             "name", Comparator.comparing(Branch::name, String.CASE_INSENSITIVE_ORDER));
 
     private final BranchRepository branches;
+    private final StockMovementRepository movements;
     private final Transactions tx;
 
-    public BranchService(BranchRepository branches, Transactions tx) {
+    public BranchService(BranchRepository branches, StockMovementRepository movements, Transactions tx) {
         this.branches = branches;
+        this.movements = movements;
         this.tx = tx;
     }
 
@@ -65,6 +68,9 @@ public class BranchService implements BranchUseCase {
         tx.run(() -> {
             if (get(id).kitchen()) {
                 throw new ConflictException(null, "No se puede borrar la sede cocina");
+            }
+            if (movements.isBranchUsed(id)) {
+                throw new ConflictException(null, "La sede tiene movimientos de stock");
             }
             branches.softDelete(id, actorId);
         });

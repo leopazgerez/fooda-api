@@ -90,6 +90,28 @@ Al arrancar, si `APP_ADMIN_EMAIL` está definido y no hay configuración, se sie
 
 Errores: siempre JSON `{message, status, timestamp}` y, si aplica, `field` (por ejemplo 409 con `field: "email"` si un admin crea un usuario con un email que ya existe). Si dos operaciones modifican el mismo usuario a la vez, la segunda recibe 409 y tiene que reintentar.
 
+### Producción y compras
+
+`GET` con `PRODUCTION_READ`; el resto con `PRODUCTION_WRITE` (hoy solo `ADMIN`). El código del lote es `<n> <MES> <aa>` (por ejemplo `1 NOV 26`), el número reinicia cada mes y la fecha de negocio es la de Buenos Aires.
+
+| Método y ruta | Qué hace |
+|---|---|
+| `GET /api/productions`, `GET /api/productions/{id}` | Lista paginada / detalle (costo estimado y real, sobrantes, traslados) |
+| `POST /api/productions` `{lines:[{packId, planned}], start?}` | 201, planifica y genera las compras pendientes por proveedor |
+| `DELETE /api/productions/{id}` | Anula la producción |
+| `GET /api/productions/{id}/shopping-list`, `/recipe-book` | Lista de compras y recetario |
+| `PATCH /api/productions/{id}/leftovers` `{leftovers:{supplyId: cantidad}, version?}` | Sobrantes de insumos |
+| `POST /api/productions/{id}/close` `{date?, lines?:[{packId, actual}], distribution?:[{branchId, packId, quantity}]}` (cuerpo opcional) | Cierra: el stock queda en cocina menos lo repartido a cada sede. 409 si ya está cerrada |
+| `POST /api/productions/{id}/reopen` | Vuelve a `planned`, revierte los movimientos de stock y regenera las compras pendientes. 409 si no está cerrada |
+| `GET /api/purchases?productionId=` | Compras (pendientes o hechas) |
+| `GET /api/purchases/{id}` | Una compra (404 "Compra no encontrada") |
+| `POST /api/purchases` `{supplierId, date?, lines}` | 201, compra suelta |
+| `POST /api/purchases/{id}/buy` `{date?, lines:[{supplyId, quantity, packagePrice}]}` | Registra la compra, genera el gasto y devuelve `alerts` si algún precio sube más de `priceRiseAlert`. `quantity` se redondea a 3 decimales y `packagePrice` a 2 |
+| `DELETE /api/purchases/{id}` | Anula la compra (borra su gasto); una pendiente de producción vuelve a `pending` |
+| `GET /api/packaging` | Estado de bandejas y stickers |
+
+Mientras no existan las ventas (bloque 4), `sold` y `payback` valen 0, y hasta el bloque 5 ningún mes figura como cerrado.
+
 ### Cosas a tener en cuenta
 
 - **Logout:** solo revoca el refresh token. El access token sigue valiendo hasta 15 minutos después del logout (lo que dure `APP_JWT_ACCESS_TTL`).

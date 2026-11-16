@@ -2,6 +2,7 @@ package com.fooda.api.catalog.application.service;
 
 import com.fooda.api.catalog.application.port.in.SupplierChanges;
 import com.fooda.api.catalog.application.port.in.SupplierUseCase;
+import com.fooda.api.core.application.port.out.PurchaseRepository;
 import com.fooda.api.core.application.port.out.SupplierRepository;
 import com.fooda.api.core.application.port.out.SupplyRepository;
 import com.fooda.api.core.domain.catalog.Supplier;
@@ -25,11 +26,14 @@ public class SupplierService implements SupplierUseCase {
 
     private final SupplierRepository suppliers;
     private final SupplyRepository supplies;
+    private final PurchaseRepository purchases;
     private final Transactions tx;
 
-    public SupplierService(SupplierRepository suppliers, SupplyRepository supplies, Transactions tx) {
+    public SupplierService(SupplierRepository suppliers, SupplyRepository supplies, PurchaseRepository purchases,
+                           Transactions tx) {
         this.suppliers = suppliers;
         this.supplies = supplies;
+        this.purchases = purchases;
         this.tx = tx;
     }
 
@@ -63,6 +67,9 @@ public class SupplierService implements SupplierUseCase {
             get(id);
             if (supplies.existsBySupplier(id)) {
                 throw new ConflictException(null, "El proveedor tiene insumos cargados");
+            }
+            if (purchases.isSupplierUsed(id)) {
+                throw new ConflictException(null, "El proveedor tiene compras cargadas");
             }
             suppliers.softDelete(id, actorId);
         });

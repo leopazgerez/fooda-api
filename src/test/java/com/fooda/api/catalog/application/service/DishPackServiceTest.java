@@ -1,5 +1,12 @@
 package com.fooda.api.catalog.application.service;
 
+import com.fooda.api.core.domain.production.Production;
+import com.fooda.api.core.domain.production.ProductionLine;
+import com.fooda.api.core.domain.production.ProductionStatus;
+import com.fooda.api.core.domain.stock.MovementType;
+import com.fooda.api.core.domain.stock.StockMovement;
+import com.fooda.api.production.fakes.InMemoryProductionRepository;
+import com.fooda.api.production.fakes.InMemoryStockMovementRepository;
 import com.fooda.api.catalog.application.port.in.*;
 import com.fooda.api.catalog.fakes.*;
 import com.fooda.api.core.domain.catalog.*;
@@ -34,8 +41,10 @@ class DishPackServiceTest {
             new BusinessCalendar(Clock.fixed(Instant.parse("2026-11-15T15:00:00Z"), ZoneOffset.UTC));
     private final DishUseCase dishes = new DishService(dishRepo, packRepo, supplyRepo, calendar,
             new DirectTransactions());
-    private final PackUseCase packs = new PackService(packRepo, dishRepo, supplyRepo, settingsRepo, calendar,
-            new DirectTransactions());
+    private final InMemoryProductionRepository productionRepo = new InMemoryProductionRepository();
+    private final InMemoryStockMovementRepository movementRepo = new InMemoryStockMovementRepository();
+    private final PackUseCase packs = new PackService(packRepo, dishRepo, supplyRepo, settingsRepo, productionRepo,
+            movementRepo, calendar, new DirectTransactions());
 
     {
         // Subset of the CostsTest fixture (port of costos.test.ts) used by ravioles and canelones.
@@ -183,6 +192,21 @@ class DishPackServiceTest {
                 .isInstanceOf(ResourceNotFoundException.class).hasMessage("Plato no encontrado");
     }
 
+    @Test void packInAProductionOrStockCannotBeDeleted() {
+        long planned = packs.create("Planificado").pack().id();
+        long moved = packs.create("Movido").pack().id();
+        productionRepo.save(new Production(null, "1 NOV 26", 1, ProductionStatus.PLANNED, TODAY, null,
+                List.of(new ProductionLine(planned, 10, null)), null, null, null, null));
+        movementRepo.add(new StockMovement(null, TODAY, 1L, 1L, moved, 5, MovementType.ADJUSTMENT, null, "x"));
+        for (long id : new long[]{planned, moved}) {
+            assertThatThrownBy(() -> packs.delete(id, 1L)).isInstanceOf(ConflictException.class)
+                    .hasMessage("El pack está en uso; desactivalo en lugar de borrarlo");
+        }
+        long free = packs.create("Libre").pack().id();
+        packs.delete(free, 1L);
+        assertThat(packs.list()).extracting(v -> v.pack().id()).containsExactly(planned, moved);
+    }
+
     @Test void packNumbersAreSequential() {
         assertThat(packs.create("Uno").pack().number()).isEqualTo(1);
         PackView two = packs.create("Dos");
@@ -215,8 +239,8 @@ class DishPackServiceTest {
 
     @Test void packViewsNeedSettings() {
         long id = packs.create("Pack").pack().id();
-        var empty = new PackService(packRepo, dishRepo, supplyRepo, new InMemorySettingsRepository(), calendar,
-                new DirectTransactions());
+        var empty = new PackService(packRepo, dishRepo, supplyRepo, new InMemorySettingsRepository(),
+                productionRepo, movementRepo, calendar, new DirectTransactions());
         assertThatThrownBy(() -> empty.get(id))
                 .isInstanceOf(ResourceNotFoundException.class).hasMessage("Todavía no se cargaron los parámetros");
     }

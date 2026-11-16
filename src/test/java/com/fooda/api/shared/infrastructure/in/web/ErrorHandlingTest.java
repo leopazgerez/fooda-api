@@ -70,6 +70,12 @@ class ErrorHandlingTest {
                     "dup", new SQLException("duplicate key", "23505"), "branch_one_kitchen"));
         }
 
+        @GetMapping("/t/production-code")
+        void productionCode() {
+            throw new DataIntegrityViolationException("dup", new ConstraintViolationException(
+                    "dup", new SQLException("duplicate key", "23505"), "production_code_key"));
+        }
+
         @GetMapping("/t/overflow")
         void overflow() {
             throw new DataIntegrityViolationException("overflow", new SQLException("numeric field overflow", "22003"));
@@ -134,6 +140,14 @@ class ErrorHandlingTest {
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.field").value("kitchen"))
                 .andExpect(jsonPath("$.message").value("Ya hay una sede marcada como cocina"));
+    }
+
+    @Test
+    void duplicateProductionCodeAsksToRetry() throws Exception {
+        mvc.perform(get("/t/production-code").with(jwt()))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.field").value("code"))
+                .andExpect(jsonPath("$.message").value("Ya existe una producción con ese código; reintentá"));
     }
 
     @Test

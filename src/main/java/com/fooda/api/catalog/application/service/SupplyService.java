@@ -2,6 +2,7 @@ package com.fooda.api.catalog.application.service;
 
 import com.fooda.api.catalog.application.port.in.*;
 import com.fooda.api.core.application.port.out.DishRepository;
+import com.fooda.api.core.application.port.out.PurchaseRepository;
 import com.fooda.api.core.application.port.out.SettingsRepository;
 import com.fooda.api.core.application.port.out.SupplierRepository;
 import com.fooda.api.core.application.port.out.SupplyRepository;
@@ -34,15 +35,18 @@ public class SupplyService implements SupplyUseCase {
     private final SupplierRepository suppliers;
     private final DishRepository dishes;
     private final SettingsRepository settings;
+    private final PurchaseRepository purchases;
     private final BusinessCalendar calendar;
     private final Transactions tx;
 
     public SupplyService(SupplyRepository supplies, SupplierRepository suppliers, DishRepository dishes,
-                         SettingsRepository settings, BusinessCalendar calendar, Transactions tx) {
+                         SettingsRepository settings, PurchaseRepository purchases, BusinessCalendar calendar,
+                         Transactions tx) {
         this.supplies = supplies;
         this.suppliers = suppliers;
         this.dishes = dishes;
         this.settings = settings;
+        this.purchases = purchases;
         this.calendar = calendar;
         this.tx = tx;
     }
@@ -98,7 +102,7 @@ public class SupplyService implements SupplyUseCase {
         tx.run(() -> {
             find(id);
             boolean isOil = settings.find().map(s -> Long.valueOf(id).equals(s.oilSupplyId())).orElse(false);
-            if (dishes.isSupplyUsed(id) || supplies.isPartOfComposite(id) || isOil) {
+            if (dishes.isSupplyUsed(id) || supplies.isPartOfComposite(id) || isOil || purchases.isSupplyUsed(id)) {
                 throw new ConflictException(null, "El insumo está en uso; desactivalo en lugar de borrarlo");
             }
             supplies.softDelete(id, actorId);

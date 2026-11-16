@@ -17,4 +17,8 @@ interface SupplyPriceJpaRepository extends JpaRepository<SupplyPriceJpaEntity, L
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query("update SupplyPriceJpaEntity e set e.deletedAt = :now, e.deletedBy = :by where e.id = :id and e.deletedAt is null")
     void softDelete(@Param("id") long id, @Param("by") long by, @Param("now") Instant now);
+
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("update SupplyPriceJpaEntity e set e.deletedAt = :now, e.deletedBy = :by where e.purchaseId = :purchaseId and e.deletedAt is null")
+    void softDeleteByPurchase(@Param("purchaseId") long purchaseId, @Param("by") long by, @Param("now") Instant now);
 }

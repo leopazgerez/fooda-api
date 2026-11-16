@@ -31,6 +31,11 @@ public interface SupplyRepository {
 
     SupplyPrice addPrice(SupplyPrice p);
 
+    /** A price row added by a purchase; {@link #softDeletePurchasePrices} undoes it. */
+    SupplyPrice addPurchasePrice(SupplyPrice p, long purchaseId);
+
+    void softDeletePurchasePrices(long purchaseId, long actorId);
+
     Optional<SupplyPrice> findPrice(long priceId);
 
     void softDeletePrice(long priceId, long actorId);

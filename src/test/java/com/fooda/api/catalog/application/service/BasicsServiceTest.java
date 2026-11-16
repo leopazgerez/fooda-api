@@ -3,6 +3,12 @@ package com.fooda.api.catalog.application.service;
 import com.fooda.api.catalog.application.port.in.*;
 import com.fooda.api.core.domain.catalog.*;
 import com.fooda.api.catalog.fakes.*;
+import com.fooda.api.core.domain.production.Purchase;
+import com.fooda.api.core.domain.production.PurchaseStatus;
+import com.fooda.api.core.domain.stock.MovementType;
+import com.fooda.api.core.domain.stock.StockMovement;
+import com.fooda.api.production.fakes.InMemoryPurchaseRepository;
+import com.fooda.api.production.fakes.InMemoryStockMovementRepository;
 import com.fooda.api.shared.DirectTransactions;
 import com.fooda.api.shared.application.Field;
 import com.fooda.api.shared.application.ListQuery;
@@ -12,6 +18,7 @@ import com.fooda.api.shared.domain.ValidationException;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -24,8 +31,10 @@ class BasicsServiceTest {
     private final InMemorySupplyRepository supplyRepo = new InMemorySupplyRepository();
     private final InMemorySettingsRepository settingsRepo = new InMemorySettingsRepository();
     private final DirectTransactions tx = new DirectTransactions();
-    private final SupplierUseCase suppliers = new SupplierService(supplierRepo, supplyRepo, tx);
-    private final BranchUseCase branches = new BranchService(branchRepo, tx);
+    private final InMemoryPurchaseRepository purchaseRepo = new InMemoryPurchaseRepository();
+    private final InMemoryStockMovementRepository movementRepo = new InMemoryStockMovementRepository();
+    private final SupplierUseCase suppliers = new SupplierService(supplierRepo, supplyRepo, purchaseRepo, tx);
+    private final BranchUseCase branches = new BranchService(branchRepo, movementRepo, tx);
     private final ReserveFundUseCase funds = new ReserveFundService(new InMemoryReserveFundRepository(), tx);
     private final SettingsUseCase settings = new SettingsService(settingsRepo, supplyRepo, tx);
 
@@ -52,6 +61,23 @@ class BasicsServiceTest {
         supplyRepo.save(new Supply(null, "Harina", Unit.G, s.id(), null, BigDecimal.TEN, null, null, null, true, null));
         assertThatThrownBy(() -> suppliers.delete(s.id(), 1L)).isInstanceOf(ConflictException.class);
         assertThat(suppliers.get(s.id())).isNotNull();
+    }
+
+    @Test void supplierWithPurchasesCannotBeDeleted() {
+        Supplier s = suppliers.create(new Supplier(null, "Súper", null, 1, null));
+        purchaseRepo.save(new Purchase(null, null, s.id(), PurchaseStatus.PENDING, null, null, null, null));
+        assertThatThrownBy(() -> suppliers.delete(s.id(), 1L)).isInstanceOf(ConflictException.class)
+                .hasMessage("El proveedor tiene compras cargadas").extracting("field").isNull();
+        assertThat(suppliers.get(s.id())).isNotNull();
+    }
+
+    @Test void branchWithStockMovementsCannotBeDeleted() {
+        Branch b = branches.create(branch("Centro", false));
+        movementRepo.add(new StockMovement(null, LocalDate.of(2026, 11, 15), b.id(), 1L, 1L, 5,
+                MovementType.TRANSFER_IN, 1L, null));
+        assertThatThrownBy(() -> branches.delete(b.id(), 1L)).isInstanceOf(ConflictException.class)
+                .hasMessage("La sede tiene movimientos de stock").extracting("field").isNull();
+        assertThat(branches.get(b.id())).isNotNull();
     }
 
     @Test void kitchenCannotBeDeletedNorDuplicated() {

@@ -119,10 +119,27 @@ public class SupplyPersistenceAdapter implements SupplyRepository {
     @Override
     @Transactional
     public SupplyPrice addPrice(SupplyPrice p) {
+        return insertPrice(p, null);
+    }
+
+    @Override
+    @Transactional
+    public SupplyPrice addPurchasePrice(SupplyPrice p, long purchaseId) {
+        return insertPrice(p, purchaseId);
+    }
+
+    @Override
+    @Transactional
+    public void softDeletePurchasePrices(long purchaseId, long actorId) {
+        prices.softDeleteByPurchase(purchaseId, actorId, clock.instant());
+    }
+
+    private SupplyPrice insertPrice(SupplyPrice p, Long purchaseId) {
         SupplyPriceJpaEntity e = new SupplyPriceJpaEntity();
         e.supplyId = p.supplyId();
         e.priceDate = p.date();
         e.packagePrice = p.packagePrice();
+        e.purchaseId = purchaseId;
         return toDomain(prices.saveAndFlush(e));
     }
 

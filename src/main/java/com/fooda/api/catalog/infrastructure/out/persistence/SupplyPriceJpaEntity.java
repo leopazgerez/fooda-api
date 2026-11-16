@@ -25,4 +25,7 @@ class SupplyPriceJpaEntity extends AuditedJpaEntity {
 
     @Column(name = "package_price", nullable = false, precision = 12, scale = 2)
     BigDecimal packagePrice;
+
+    @Column(name = "purchase_id")
+    Long purchaseId;
 }
