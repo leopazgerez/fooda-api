@@ -6,7 +6,9 @@ import com.fooda.api.core.domain.catalog.RecipeLine;
 import com.fooda.api.core.domain.catalog.Unit;
 import org.springframework.data.domain.AuditorAware;
 import org.springframework.data.domain.Sort;
-import org.springframework.stereotype.Component;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.LockModeType;
+import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
@@ -16,15 +18,18 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-@Component
+@Repository // translates the force-increment's OptimisticLockException into Spring's (→ 409)
 public class DishPersistenceAdapter implements DishRepository {
 
     private final DishJpaRepository dishes;
     private final RecipeLineJpaRepository lines;
     private final Clock clock;
     private final AuditorAware<Long> auditor;
+    private final EntityManager em;
 
-    public DishPersistenceAdapter(DishJpaRepository dishes, RecipeLineJpaRepository lines, Clock clock, AuditorAware<Long> auditor) {
+    public DishPersistenceAdapter(DishJpaRepository dishes, RecipeLineJpaRepository lines, Clock clock,
+                                  AuditorAware<Long> auditor, EntityManager em) {
+        this.em = em;
         this.dishes = dishes;
         this.lines = lines;
         this.clock = clock;
@@ -55,6 +60,8 @@ public class DishPersistenceAdapter implements DishRepository {
         DishJpaEntity saved = dishes.saveAndFlush(e);
         if (d.id() == null || !sameRecipe(recipeOf(saved.id), d.recipe())) {
             if (d.id() != null) {
+                // the lines live outside the dish row: bump its version so concurrent recipe edits conflict
+                em.lock(saved, LockModeType.PESSIMISTIC_FORCE_INCREMENT);
                 Long actor = auditor.getCurrentAuditor()
                         .orElseThrow(() -> new IllegalStateException("No hay usuario autenticado para auditar"));
                 lines.softDeleteByDish(saved.id, actor, clock.instant());

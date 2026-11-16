@@ -36,7 +36,7 @@ class SettingsControllerTest {
     @Test
     void putWithoutTraysPerPackIs400() throws Exception {
         mvc.perform(put("/api/settings").with(jwt().authorities(new SimpleGrantedAuthority("SETTINGS_WRITE")))
-                        .contentType(APPLICATION_JSON).content("{\"packPrice\":1000}"))
+                        .contentType(APPLICATION_JSON).content("{\"packPrice\":1000,\"oilMlPerPack\":50}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.field")
                         .value("traysPerPack"));

@@ -48,7 +48,7 @@ public class ReserveFundService implements ReserveFundUseCase {
         return tx.get(() -> {
             ReserveFund f = get(id);
             return funds.save(new ReserveFund(f.id(), c.name().or(f.name()), c.percentage().or(f.percentage()),
-                    f.version()));
+                    c.version().or(f.version())));
         });
     }
 

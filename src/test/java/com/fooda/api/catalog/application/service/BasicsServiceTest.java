@@ -40,10 +40,10 @@ class BasicsServiceTest {
 
     @Test void patchClearsOptionalAndRejectsEmptyRequired() {
         Supplier s = suppliers.create(new Supplier(null, "Súper", "jueves", 1, null));
-        Supplier cleared = suppliers.update(s.id(), new SupplierChanges(Field.absent(), Field.of(null), Field.absent()));
+        Supplier cleared = suppliers.update(s.id(), new SupplierChanges(Field.absent(), Field.of(null), Field.absent(), Field.absent()));
         assertThat(cleared.purchaseDay()).isNull();
         assertThat(cleared.name()).isEqualTo("Súper");
-        assertThatThrownBy(() -> suppliers.update(s.id(), new SupplierChanges(Field.of(""), Field.absent(), Field.absent())))
+        assertThatThrownBy(() -> suppliers.update(s.id(), new SupplierChanges(Field.of(""), Field.absent(), Field.absent(), Field.absent())))
                 .isInstanceOf(ValidationException.class).extracting("field").isEqualTo("name");
     }
 
@@ -61,10 +61,10 @@ class BasicsServiceTest {
                 .isInstanceOf(ConflictException.class).extracting("field").isEqualTo("kitchen");
         Branch other = branches.create(branch("Otra", false));
         assertThatThrownBy(() -> branches.update(other.id(), new BranchChanges(Field.absent(), Field.absent(),
-                Field.absent(), Field.absent(), Field.absent(), Field.absent(), Field.absent(), Field.of(true))))
+                Field.absent(), Field.absent(), Field.absent(), Field.absent(), Field.absent(), Field.of(true), Field.absent())))
                 .isInstanceOf(ConflictException.class).extracting("field").isEqualTo("kitchen");
         assertThat(branches.update(k.id(), new BranchChanges(Field.of("Cocina 2"), Field.absent(), Field.absent(),
-                Field.absent(), Field.absent(), Field.absent(), Field.absent(), Field.of(true))).name()).isEqualTo("Cocina 2");
+                Field.absent(), Field.absent(), Field.absent(), Field.absent(), Field.of(true), Field.absent())).name()).isEqualTo("Cocina 2");
     }
 
     @Test void suppliersListedBySortOrder() {

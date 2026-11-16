@@ -84,7 +84,7 @@ public class PacksController {
     public PackResponse update(@PathVariable long id, @RequestBody Map<String, Object> body) {
         var b = new PatchBody(body);
         return PackResponse.from(packs.update(id, new PackChanges(b.string("name"), b.required(b.bool("active"), "active"),
-                b.decimal("price"))));
+                b.decimal("price"), b.required(b.id("version"), "version"))));
     }
 
     @DeleteMapping("/{id}")
@@ -124,7 +124,6 @@ public class PacksController {
             }
             return new MenuSlot(number, dishId);
         }).toList();
-        var created = VersionResponse.from(packs.addVersion(id, validFrom, menus));
-        return Bodies.created(created.id(), created);
+        return Bodies.createdInCollection(VersionResponse.from(packs.addVersion(id, validFrom, menus)));
     }
 }

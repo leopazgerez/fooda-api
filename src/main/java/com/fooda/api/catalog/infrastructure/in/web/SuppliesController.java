@@ -98,10 +98,10 @@ public class SuppliesController {
     public SupplyResponse update(@PathVariable long id, @RequestBody Map<String, Object> body) {
         var b = new PatchBody(body);
         return SupplyResponse.from(supplies.update(id, new SupplyChanges(b.string("name"),
-                b.string("unit").map(v -> Unit.of(v, "unit")), b.required(b.id("supplierId"), "supplierId"), b.string("presentation"),
+                b.required(b.string("unit"), "unit").map(v -> Unit.of(v, "unit")), b.required(b.id("supplierId"), "supplierId"), b.string("presentation"),
                 b.decimal("content"), b.decimal("gramsPerUnit"),
                 b.string("packagingType").map(v -> PackagingType.of(v, "packagingType")),
-                b.object("composite").map(Bodies::composite), b.required(b.bool("active"), "active"))));
+                b.object("composite").map(Bodies::composite), b.required(b.bool("active"), "active"), b.required(b.id("version"), "version"))));
     }
 
     @DeleteMapping("/{id}")
@@ -128,8 +128,7 @@ public class SuppliesController {
         } catch (DateTimeParseException e) {
             throw new ValidationException("date", "Valor inválido");
         }
-        var created = PriceResponse.from(supplies.addPrice(id, b.decimal("packagePrice").value(), d));
-        return Bodies.created(created.id(), created);
+        return Bodies.createdInCollection(PriceResponse.from(supplies.addPrice(id, b.decimal("packagePrice").value(), d)));
     }
 
     @DeleteMapping("/{id}/prices/{priceId}")

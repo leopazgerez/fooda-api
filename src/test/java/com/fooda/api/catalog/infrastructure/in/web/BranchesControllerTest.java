@@ -46,6 +46,18 @@ class BranchesControllerTest {
     }
 
     @Test
+    void partialShippingIs400() throws Exception {
+        bad(patch("/api/branches/7"), "{\"shipping\":{\"value\":7}}", "shipping");
+        bad(patch("/api/branches/7"), "{\"shipping\":{\"type\":\"percentage\"}}", "shipping");
+        bad(post("/api/branches"), "{\"name\":\"Sur\",\"capacity\":5,\"shipping\":{\"value\":7}}", "shipping");
+    }
+
+    @Test
+    void patchNullVersionIs400() throws Exception {
+        bad(patch("/api/branches/7"), "{\"version\":null}", "version");
+    }
+
+    @Test
     void postWithoutCapacityIs400() throws Exception {
         bad(post("/api/branches"), "{\"name\":\"Sur\"}", "capacity");
     }

@@ -26,6 +26,12 @@ final class Bodies {
                 ServletUriComponentsBuilder.fromCurrentRequest().path("/{id}").buildAndExpand(id).toUri()).body(body);
     }
 
+    /** Sub-resource without its own GET (prices, pack versions): Location is the collection just posted to. */
+    static <T> ResponseEntity<T> createdInCollection(T body) {
+        return ResponseEntity.created(ServletUriComponentsBuilder.fromCurrentRequest().build().toUri()).body(body);
+    }
+
+    /** No shipping key at all defaults to amount/0; a shipping object must carry both type and value. */
     static Shipping shipping(Map<String, Object> m) {
         if (m == null) {
             return new Shipping(ShippingType.AMOUNT, BigDecimal.ZERO);
@@ -33,8 +39,10 @@ final class Bodies {
         var b = new PatchBody(m);
         String type = b.string("type").value();
         BigDecimal value = b.decimal("value").value();
-        return new Shipping(type == null ? ShippingType.AMOUNT : ShippingType.of(type, "shipping"),
-                value == null ? BigDecimal.ZERO : value);
+        if (type == null || value == null) {
+            throw new ValidationException("shipping", "Completá el tipo y el valor del envío");
+        }
+        return new Shipping(ShippingType.of(type, "shipping"), value);
     }
 
     static Composite composite(Map<String, Object> m) {

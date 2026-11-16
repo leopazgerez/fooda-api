@@ -5,5 +5,5 @@ import com.fooda.api.shared.application.Field;
 
 import java.util.List;
 
-public record DishChanges(Field<String> name, Field<List<RecipeLine>> recipe) {
+public record DishChanges(Field<String> name, Field<List<RecipeLine>> recipe, Field<Long> version) {
 }

@@ -87,7 +87,7 @@ public class SupplyService implements SupplyUseCase {
                     c.supplierId().or(s.supplierId()), c.presentation().or(s.presentation()),
                     c.content().or(s.content()), c.gramsPerUnit().or(s.gramsPerUnit()),
                     c.packagingType().or(s.packagingType()), c.composite().or(s.composite()),
-                    c.active().or(s.active()), s.version());
+                    c.active().or(s.active()), c.version().or(s.version()));
             validate(next, id);
             return view(supplies.save(next));
         });

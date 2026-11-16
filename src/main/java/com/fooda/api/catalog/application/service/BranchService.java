@@ -54,7 +54,7 @@ public class BranchService implements BranchUseCase {
             Branch changed = new Branch(b.id(), c.name().or(b.name()), c.address().or(b.address()),
                     c.capacity().or(b.capacity()), c.stockThreshold().or(b.stockThreshold()),
                     c.freeSlotsThreshold().or(b.freeSlotsThreshold()), c.shipping().or(b.shipping()),
-                    c.affectsPrice().or(b.affectsPrice()), c.kitchen().or(b.kitchen()), b.version());
+                    c.affectsPrice().or(b.affectsPrice()), c.kitchen().or(b.kitchen()), c.version().or(b.version()));
             checkSingleKitchen(changed);
             return branches.save(changed);
         });

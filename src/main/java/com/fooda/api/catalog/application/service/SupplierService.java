@@ -53,7 +53,7 @@ public class SupplierService implements SupplierUseCase {
         return tx.get(() -> {
             Supplier s = get(id);
             return suppliers.save(new Supplier(s.id(), c.name().or(s.name()), c.purchaseDay().or(s.purchaseDay()),
-                    c.sortOrder().or(s.sortOrder()), s.version()));
+                    c.sortOrder().or(s.sortOrder()), c.version().or(s.version())));
         });
     }
 

@@ -27,6 +27,9 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest(properties = {"app.admin.email=catalog-admin@test.com", "app.admin.password=admin-pass-123"})
@@ -116,5 +119,82 @@ class CatalogFlowTest {
         users.save(new User(null, email, "Ana", hasher.hash("password1"), Role.USER, true, true));
         mvc.perform(get("/api/supplies").header("Authorization", login(email, "password1")))
                 .andExpect(status().isForbidden());
+    }
+
+    private ResultActions putSettings(String auth, String body) throws Exception {
+        return mvc.perform(put("/api/settings").header("Authorization", auth).contentType(APPLICATION_JSON).content(body));
+    }
+
+    private ResultActions patchJson(String auth, String path, String body) throws Exception {
+        return mvc.perform(patch(path).header("Authorization", auth).contentType(APPLICATION_JSON).content(body));
+    }
+
+    private static final String SETTINGS = """
+            {"packPrice":46000,"oilMlPerPack":50,"oilSupplyId":null,"traysPerPack":5,"stickersPerPack":5,
+             "referenceOverhead":1000,"regularMonths":3,"recontactDays":30,"priceRiseAlert":0.1,
+             "saleReasons":["regalo"],"expenseTypes":["fijo"]%s}""";
+
+    @Test
+    void settingsPutRequiresEveryFieldAndHonoursVersion() throws Exception {
+        String auth = login(ADMIN_EMAIL, ADMIN_PASSWORD);
+        String current = mvc.perform(get("/api/settings").header("Authorization", auth))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        int version = JsonPath.<Number>read(current, "$.version").intValue();
+
+        putSettings(auth, SETTINGS.formatted("").replace("\"referenceOverhead\":1000,", ""))
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.field").value("referenceOverhead"));
+        putSettings(auth, SETTINGS.formatted("").replace("\"saleReasons\":[\"regalo\"],", ""))
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.field").value("saleReasons"));
+
+        String saved = putSettings(auth, SETTINGS.formatted(",\"version\":" + version))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.packPrice").value(46000))
+                .andReturn().getResponse().getContentAsString();
+        assertThat(JsonPath.<Number>read(saved, "$.version").intValue()).isGreaterThan(version);
+
+        putSettings(auth, SETTINGS.formatted(",\"version\":" + version)).andExpect(status().isConflict());
+        putSettings(auth, SETTINGS.formatted("")).andExpect(status().isOk())
+                .andExpect(jsonPath("$.saleReasons[0]").value("regalo"));
+    }
+
+    @Test
+    void patchWithStaleVersionIs409AndCurrentVersionIs200() throws Exception {
+        String auth = login(ADMIN_EMAIL, ADMIN_PASSWORD);
+        int supplier = create(auth, "/api/suppliers", "{\"name\":\"Prov lock\"}");
+        String body = mvc.perform(get("/api/suppliers/" + supplier).header("Authorization", auth))
+                .andReturn().getResponse().getContentAsString();
+        int version = JsonPath.<Number>read(body, "$.version").intValue();
+
+        patchJson(auth, "/api/suppliers/" + supplier, "{\"name\":\"Prov A\",\"version\":" + version + "}")
+                .andExpect(status().isOk());
+        patchJson(auth, "/api/suppliers/" + supplier, "{\"name\":\"Prov B\",\"version\":" + version + "}")
+                .andExpect(status().isConflict());
+        patchJson(auth, "/api/suppliers/" + supplier, "{\"name\":\"Prov C\"}").andExpect(status().isOk())
+                .andExpect(jsonPath("$.name").value("Prov C"));
+    }
+
+    @Test
+    void subResourceLocationsPointToTheirCollectionAndOverflowIs400() throws Exception {
+        String auth = login(ADMIN_EMAIL, ADMIN_PASSWORD);
+        int supplier = create(auth, "/api/suppliers", "{\"name\":\"Prov loc\"}");
+        int supply = create(auth, "/api/supplies", "{\"name\":\"Sal loc\",\"unit\":\"g\",\"supplierId\":"
+                + supplier + ",\"content\":1000}");
+        send(auth, "/api/supplies/" + supply + "/prices", "{\"packagePrice\":100}")
+                .andExpect(status().isCreated())
+                .andExpect(header().string("Location", org.hamcrest.Matchers.endsWith("/api/supplies/" + supply + "/prices")));
+        int dish = create(auth, "/api/dishes", "{\"name\":\"Plato loc\",\"recipe\":[{\"supplyId\":"
+                + supply + ",\"quantity\":10,\"unit\":\"g\"}]}");
+        int pack = create(auth, "/api/packs", "{\"name\":\"Pack loc\"}");
+        String menu = "{\"number\":%d,\"dishId\":" + dish + "}";
+        String menus = String.join(",", menu.formatted(1), menu.formatted(2), menu.formatted(3),
+                menu.formatted(4), menu.formatted(5));
+        send(auth, "/api/packs/" + pack + "/versions", "{\"menus\":[" + menus + "]}")
+                .andExpect(status().isCreated())
+                .andExpect(header().string("Location", org.hamcrest.Matchers.endsWith("/api/packs/" + pack + "/versions")));
+
+        // content is NUMERIC(12,3): Postgres raises 22003
+        send(auth, "/api/supplies", "{\"name\":\"Enorme\",\"unit\":\"g\",\"supplierId\":" + supplier
+                + ",\"content\":1000000000000}")
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Algún valor está fuera de rango"));
     }
 }

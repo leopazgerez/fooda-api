@@ -69,7 +69,7 @@ public class DishService implements DishUseCase {
     public DishView update(long id, DishChanges c) {
         return tx.get(() -> {
             Dish d = find(id);
-            Dish next = new Dish(id, c.name().or(d.name()), c.recipe().or(d.recipe()), d.version());
+            Dish next = new Dish(id, c.name().or(d.name()), c.recipe().or(d.recipe()), c.version().or(d.version()));
             checkSupplies(next);
             return viewer().apply(dishes.save(next));
         });

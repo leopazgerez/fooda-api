@@ -9,5 +9,5 @@ import java.math.BigDecimal;
 
 public record SupplyChanges(Field<String> name, Field<Unit> unit, Field<Long> supplierId, Field<String> presentation,
                             Field<BigDecimal> content, Field<BigDecimal> gramsPerUnit,
-                            Field<PackagingType> packagingType, Field<Composite> composite, Field<Boolean> active) {
+                            Field<PackagingType> packagingType, Field<Composite> composite, Field<Boolean> active, Field<Long> version) {
 }

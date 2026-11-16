@@ -10,7 +10,8 @@ import java.util.List;
 
 interface PackJpaRepository extends JpaRepository<PackJpaEntity, Long> {
 
-    @Query("select coalesce(max(p.number), 0) from PackJpaEntity p")
+    // native: bypasses @SQLRestriction so a deleted pack's number is never reused
+    @Query(value = "select coalesce(max(number), 0) from pack", nativeQuery = true)
     int maxNumber();
 
     @Modifying(flushAutomatically = true, clearAutomatically = true)

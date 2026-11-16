@@ -62,7 +62,7 @@ public class ReserveFundsController {
     @PreAuthorize("hasAuthority('CATALOG_WRITE')")
     public ReserveFund update(@PathVariable long id, @RequestBody Map<String, Object> body) {
         var b = new PatchBody(body);
-        return funds.update(id, new ReserveFundChanges(b.string("name"), b.decimal("percentage")));
+        return funds.update(id, new ReserveFundChanges(b.string("name"), b.decimal("percentage"), b.required(b.id("version"), "version")));
     }
 
     @DeleteMapping("/{id}")

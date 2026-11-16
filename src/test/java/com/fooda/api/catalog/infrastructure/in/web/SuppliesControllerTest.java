@@ -18,6 +18,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -36,6 +37,14 @@ class SuppliesControllerTest {
     void unknownUnitIs400() throws Exception {
         mvc.perform(post("/api/supplies").with(jwt().authorities(new SimpleGrantedAuthority("CATALOG_WRITE")))
                         .contentType(APPLICATION_JSON).content(BODY.formatted("kg")))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.field").value("unit"));
+    }
+
+    @Test
+    void patchNullUnitIs400() throws Exception {
+        mvc.perform(patch("/api/supplies/7").with(jwt().authorities(new SimpleGrantedAuthority("CATALOG_WRITE")))
+                        .contentType(APPLICATION_JSON).content("{\"unit\":null}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.field").value("unit"));
     }

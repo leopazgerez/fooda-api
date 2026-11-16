@@ -131,7 +131,7 @@ class DishPackServiceTest {
 
     @Test void packWithoutVersionHasNullCostAndProfitEqualsPrice() {
         long id = packs.create("Nuevo").pack().id();
-        packs.update(id, new PackChanges(Field.absent(), Field.absent(), Field.of(new BigDecimal("50000"))));
+        packs.update(id, new PackChanges(Field.absent(), Field.absent(), Field.of(new BigDecimal("50000")), Field.absent()));
         PackView v = packs.get(id);
         assertThat(v.currentVersion()).isNull();
         assertThat(v.cost()).isNull();
@@ -194,7 +194,7 @@ class DishPackServiceTest {
 
     @Test void editingRecipeReplacesIt() {
         long id = dish("Torta", l(1, "100"), l(2, "100"));
-        var c = new DishChanges(Field.absent(), Field.of(List.of(l(7, "100"))));
+        var c = new DishChanges(Field.absent(), Field.of(List.of(l(7, "100"))), Field.absent());
         DishView v = dishes.update(id, c);
         assertThat(v.dish().recipe()).containsExactly(l(7, "100"));
         assertThat(v.dish().name()).isEqualTo("Torta");

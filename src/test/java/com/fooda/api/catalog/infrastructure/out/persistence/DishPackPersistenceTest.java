@@ -21,6 +21,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase;
 import org.springframework.context.annotation.Import;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.math.BigDecimal;
@@ -29,6 +30,7 @@ import java.util.List;
 import java.util.stream.IntStream;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
@@ -110,6 +112,20 @@ class DishPackPersistenceTest {
         assertThat(jdbc.queryForObject("select count(*) from recipe_line where dish_id = ?", Integer.class, d.id())).isEqualTo(1);
     }
 
+    @Test
+    void recipeOnlyChangeBumpsDishVersionAndStaleVersionConflicts() {
+        Dish d = dish("Pollo");
+        reload();
+        Dish edited = dishes.save(new Dish(d.id(), "Pollo", List.of(line(b, "80")), d.version()));
+        assertThat(edited.version()).isGreaterThan(d.version());
+        reload();
+        assertThat(jdbc.queryForObject("select version from dish where dish_id = ?", Long.class, d.id()))
+                .isEqualTo(edited.version());
+        // a second edit based on the old version must not add another set of lines
+        assertThatThrownBy(() -> dishes.save(new Dish(d.id(), "Pollo", List.of(line(a, "90")), d.version())))
+                .isInstanceOf(OptimisticLockingFailureException.class);
+    }
+
     private List<MenuSlot> menus(long... dishIds) {
         return IntStream.range(0, dishIds.length).mapToObj(i -> new MenuSlot(i + 1, dishIds[i])).toList();
     }
@@ -158,5 +174,14 @@ class DishPackPersistenceTest {
         reload();
         assertThat(packs.maxNumber()).isEqualTo(7);
         assertThat(packs.findAll()).extracting(Pack::number).containsExactly(3, 7);
+    }
+
+    @Test
+    void maxNumberCountsDeletedPacksSoNumbersAreNotReused() {
+        packs.save(new Pack(null, 3, "Pack 3", true, null, null));
+        long seven = packs.save(new Pack(null, 7, "Pack 7", true, null, null)).id();
+        packs.softDelete(seven, actor);
+        reload();
+        assertThat(packs.maxNumber()).isEqualTo(7);
     }
 }

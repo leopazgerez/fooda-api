@@ -73,7 +73,7 @@ public class DishesController {
     public DishResponse update(@PathVariable long id, @RequestBody Map<String, Object> body) {
         var b = new PatchBody(body);
         return DishResponse.from(dishes.update(id, new DishChanges(b.string("name"),
-                b.list("recipe").map(Bodies::recipe))));
+                b.list("recipe").map(Bodies::recipe), b.required(b.id("version"), "version"))));
     }
 
     @DeleteMapping("/{id}")

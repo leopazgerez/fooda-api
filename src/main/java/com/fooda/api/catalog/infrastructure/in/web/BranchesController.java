@@ -82,7 +82,8 @@ public class BranchesController {
                 b.required(b.integer("stockThreshold"), "stockThreshold"),
                 b.required(b.integer("freeSlotsThreshold"), "freeSlotsThreshold"),
                 b.required(b.object("shipping"), "shipping").map(Bodies::shipping),
-                b.required(b.bool("affectsPrice"), "affectsPrice"), b.required(b.bool("kitchen"), "kitchen"))));
+                b.required(b.bool("affectsPrice"), "affectsPrice"), b.required(b.bool("kitchen"), "kitchen"),
+                b.required(b.id("version"), "version"))));
     }
 
     @DeleteMapping("/{id}")

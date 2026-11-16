@@ -45,11 +45,14 @@ public class SettingsController {
     @PreAuthorize("hasAuthority('SETTINGS_WRITE')")
     public SettingsResponse replace(@RequestBody Map<String, Object> body) {
         var b = new PatchBody(body);
+        // every field is required on PUT except oilSupplyId (nullable) and version (absent = last write wins)
         return SettingsResponse.from(settings.replace(new Settings(b.decimal("packPrice").value(),
-                b.decimal("oilMlPerPack").value(), b.id("oilSupplyId").value(), b.need(b.integer("traysPerPack"), "traysPerPack"),
-                b.need(b.integer("stickersPerPack"), "stickersPerPack"), b.decimal("referenceOverhead").value(),
+                b.need(b.decimal("oilMlPerPack"), "oilMlPerPack"), b.id("oilSupplyId").value(),
+                b.need(b.integer("traysPerPack"), "traysPerPack"), b.need(b.integer("stickersPerPack"), "stickersPerPack"),
+                b.need(b.decimal("referenceOverhead"), "referenceOverhead"),
                 b.need(b.integer("regularMonths"), "regularMonths"), b.need(b.integer("recontactDays"), "recontactDays"),
-                b.decimal("priceRiseAlert").value(), Bodies.strings(b.list("saleReasons").value(), "saleReasons"),
-                Bodies.strings(b.list("expenseTypes").value(), "expenseTypes"), b.id("version").value())));
+                b.need(b.decimal("priceRiseAlert"), "priceRiseAlert"),
+                Bodies.strings(b.need(b.list("saleReasons"), "saleReasons"), "saleReasons"),
+                Bodies.strings(b.need(b.list("expenseTypes"), "expenseTypes"), "expenseTypes"), b.id("version").value())));
     }
 }

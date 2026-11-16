@@ -65,7 +65,7 @@ public class PackService implements PackUseCase {
             Pack p = find(id);
             Function<Pack, PackView> view = viewer();
             return view.apply(packs.save(new Pack(id, p.number(), c.name().or(p.name()),
-                    c.active().or(p.active()), c.price().or(p.price()), p.version())));
+                    c.active().or(p.active()), c.price().or(p.price()), c.version().or(p.version()))));
         });
     }
 

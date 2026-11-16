@@ -47,7 +47,7 @@ class SupplyServiceTest {
 
     private static SupplyChanges noChanges() {
         return new SupplyChanges(Field.absent(), Field.absent(), Field.absent(), Field.absent(), Field.absent(),
-                Field.absent(), Field.absent(), Field.absent(), Field.absent());
+                Field.absent(), Field.absent(), Field.absent(), Field.absent(), Field.absent());
     }
 
     @Test void listShowsCurrentUnitCostAndPrice() {
@@ -107,7 +107,7 @@ class SupplyServiceTest {
         long other = service.create(newSupply("Cebolla")).supply().id();
         service.create(composite("Salsa", part));
         var c = new SupplyChanges(Field.absent(), Field.absent(), Field.absent(), Field.absent(), Field.absent(),
-                Field.absent(), Field.absent(), Field.of(new Composite(CompositeRule.MAX, List.of(other))), Field.absent());
+                Field.absent(), Field.absent(), Field.of(new Composite(CompositeRule.MAX, List.of(other))), Field.absent(), Field.absent());
         assertThatThrownBy(() -> service.update(part, c))
                 .isInstanceOf(ValidationException.class).hasMessage("Las partes de un compuesto no pueden ser compuestas");
     }
@@ -130,7 +130,7 @@ class SupplyServiceTest {
         long id = service.create(new NewSupply("Huevo", Unit.G, supplierId, null, BigDecimal.TEN, new BigDecimal("60"),
                 null, null, null)).supply().id();
         var c = new SupplyChanges(Field.absent(), Field.absent(), Field.absent(), Field.absent(), Field.absent(),
-                Field.of(null), Field.absent(), Field.absent(), Field.absent());
+                Field.of(null), Field.absent(), Field.absent(), Field.absent(), Field.absent());
         assertThat(service.update(id, c).supply().gramsPerUnit()).isNull();
         assertThat(service.update(id, noChanges()).supply().name()).isEqualTo("Huevo");
     }

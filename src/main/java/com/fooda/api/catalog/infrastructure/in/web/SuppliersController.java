@@ -61,7 +61,7 @@ public class SuppliersController {
     public Supplier update(@PathVariable long id, @RequestBody Map<String, Object> body) {
         var b = new PatchBody(body);
         return suppliers.update(id, new SupplierChanges(b.string("name"), b.string("purchaseDay"),
-                b.required(b.integer("sortOrder"), "sortOrder")));
+                b.required(b.integer("sortOrder"), "sortOrder"), b.required(b.id("version"), "version")));
     }
 
     @DeleteMapping("/{id}")

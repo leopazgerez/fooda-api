@@ -31,7 +31,14 @@ public class SettingsService implements SettingsUseCase {
             if (s.oilSupplyId() != null && supplies.findById(s.oilSupplyId()).isEmpty()) {
                 throw new ValidationException("oilSupplyId", "Insumo no encontrado");
             }
-            return settings.save(s);
+            if (s.version() != null) {
+                return settings.save(s);
+            }
+            // no version sent: last write wins over whatever is stored (or the first insert)
+            Long current = settings.find().map(Settings::version).orElse(null);
+            return settings.save(new Settings(s.packPrice(), s.oilMlPerPack(), s.oilSupplyId(), s.traysPerPack(),
+                    s.stickersPerPack(), s.referenceOverhead(), s.regularMonths(), s.recontactDays(),
+                    s.priceRiseAlert(), s.saleReasons(), s.expenseTypes(), current));
         });
     }
 }

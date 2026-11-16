@@ -74,6 +74,8 @@ Con permiso `USERS_READ` (los `GET`) o `USERS_WRITE` (`POST` y `PATCH`); hoy sol
 
 Con permiso `CATALOG_READ` (los `GET`) o `CATALOG_WRITE` (`POST`, `PATCH`, `DELETE`); `PUT /api/settings` pide `SETTINGS_WRITE`. Hoy solo los tiene `ADMIN`. Los `DELETE` son borrado lógico y dan 409 si el recurso está en uso.
 
+Los `PATCH` son parciales y aceptan un `version` opcional (el que devolvió el último `GET`): si quedó viejo, 409; sin `version` gana la última escritura. `PUT /api/settings` pide todos los campos (salvo `oilSupplyId`, que puede ser `null`) y el mismo `version` opcional. `shipping` de una sucursal, si se manda, lleva `type` y `value`.
+
 | Recurso | Rutas |
 |---|---|
 | Proveedores | `/api/suppliers` (CRUD) |

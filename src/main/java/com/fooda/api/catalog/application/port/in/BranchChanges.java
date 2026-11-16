@@ -5,5 +5,5 @@ import com.fooda.api.shared.application.Field;
 
 public record BranchChanges(Field<String> name, Field<String> address, Field<Integer> capacity,
                             Field<Integer> stockThreshold, Field<Integer> freeSlotsThreshold, Field<Shipping> shipping,
-                            Field<Boolean> affectsPrice, Field<Boolean> kitchen) {
+                            Field<Boolean> affectsPrice, Field<Boolean> kitchen, Field<Long> version) {
 }

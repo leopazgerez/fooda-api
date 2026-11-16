@@ -4,5 +4,5 @@ import com.fooda.api.shared.application.Field;
 
 import java.math.BigDecimal;
 
-public record ReserveFundChanges(Field<String> name, Field<BigDecimal> percentage) {
+public record ReserveFundChanges(Field<String> name, Field<BigDecimal> percentage, Field<Long> version) {
 }

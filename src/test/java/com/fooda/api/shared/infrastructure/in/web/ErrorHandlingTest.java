@@ -58,6 +58,23 @@ class ErrorHandlingTest {
                     "dup", new SQLException("duplicate key", "23505"), "app_user_email_key"));
         }
 
+        @GetMapping("/t/duplicate-supply")
+        void duplicateSupply() {
+            throw new DataIntegrityViolationException("dup", new ConstraintViolationException(
+                    "dup", new SQLException("duplicate key", "23505"), "supply_name_key"));
+        }
+
+        @GetMapping("/t/kitchen")
+        void kitchen() {
+            throw new DataIntegrityViolationException("dup", new ConstraintViolationException(
+                    "dup", new SQLException("duplicate key", "23505"), "branch_one_kitchen"));
+        }
+
+        @GetMapping("/t/overflow")
+        void overflow() {
+            throw new DataIntegrityViolationException("overflow", new SQLException("numeric field overflow", "22003"));
+        }
+
         @PostMapping("/t/body")
         void body(@RequestBody Map<String, Object> body) {
         }
@@ -105,5 +122,24 @@ class ErrorHandlingTest {
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.field").value("email"))
                 .andExpect(jsonPath("$.message").value("Ya existe un usuario con ese email"));
+    }
+
+    @Test
+    void catalogUniqueIndexesMapToFieldAndMessage() throws Exception {
+        mvc.perform(get("/t/duplicate-supply").with(jwt()))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.field").value("name"))
+                .andExpect(jsonPath("$.message").value("Ya existe un insumo con ese nombre"));
+        mvc.perform(get("/t/kitchen").with(jwt()))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.field").value("kitchen"))
+                .andExpect(jsonPath("$.message").value("Ya hay una sede marcada como cocina"));
+    }
+
+    @Test
+    void dataExceptionIs400OutOfRange() throws Exception {
+        mvc.perform(get("/t/overflow").with(jwt()))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Algún valor está fuera de rango"));
     }
 }

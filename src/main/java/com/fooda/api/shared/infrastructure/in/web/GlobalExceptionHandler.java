@@ -25,6 +25,8 @@ import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExcep
 
 import java.sql.SQLException;
 import java.time.Clock;
+import java.util.Locale;
+import java.util.Map;
 
 /**
  * Last-resort error mapping for every controller, as {@link ErrorResponse}. Slice advices (ordered first) handle
@@ -36,6 +38,14 @@ import java.time.Clock;
 public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
     private static final Logger LOG = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+
+    /** Unique constraint/index name → {field, message}. */
+    private static final Map<String, String[]> DUPLICATES = Map.of(
+            "app_user_email_key", new String[]{"email", "Ya existe un usuario con ese email"},
+            "supply_name_key", new String[]{"name", "Ya existe un insumo con ese nombre"},
+            "supply_packaging_key", new String[]{"packagingType", "Ya hay un insumo marcado como ese envase"},
+            "pack_number_key", new String[]{"number", "Ya existe un pack con ese número"},
+            "branch_one_kitchen", new String[]{"kitchen", "Ya hay una sede marcada como cocina"});
 
     private final Clock clock;
 
@@ -62,9 +72,12 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     ResponseEntity<ErrorResponse> integrity(DataIntegrityViolationException e) {
         String state = sqlState(e);
         if ("23505".equals(state)) {
-            String constraint = constraintName(e);
-            return error(HttpStatus.CONFLICT, duplicateMessage(constraint)).withField(duplicateField(constraint))
-                    .toResponseEntity();
+            String[] known = DUPLICATES.getOrDefault(String.valueOf(constraintName(e)).toLowerCase(Locale.ROOT),
+                    new String[]{null, "Ya existe un registro con ese valor"});
+            return error(HttpStatus.CONFLICT, known[1]).withField(known[0]).toResponseEntity();
+        }
+        if (state != null && state.startsWith("22")) { // data exception: numeric overflow, value too long, ...
+            return error(HttpStatus.BAD_REQUEST, "Algún valor está fuera de rango").toResponseEntity();
         }
         if ("23503".equals(state)) {
             return error(HttpStatus.CONFLICT, "Hay un dato relacionado que no existe o todavía está en uso")
@@ -116,15 +129,6 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
             return "El parámetro " + mismatch.getName() + " no tiene un valor válido";
         }
         return statusMessage(status.value());
-    }
-
-    private static String duplicateField(String constraint) {
-        return "app_user_email_key".equalsIgnoreCase(constraint) ? "email" : null;
-    }
-
-    private static String duplicateMessage(String constraint) {
-        return "app_user_email_key".equalsIgnoreCase(constraint)
-                ? "Ya existe un usuario con ese email" : "Ya existe un registro con ese valor";
     }
 
     private static String statusMessage(int status) {
