@@ -6,6 +6,11 @@ import com.fooda.api.core.domain.expense.PaymentMethod;
 import com.fooda.api.core.domain.production.Production;
 import com.fooda.api.core.domain.production.ProductionLine;
 import com.fooda.api.core.domain.production.ProductionStatus;
+import com.fooda.api.core.domain.catalog.ReserveFund;
+import com.fooda.api.core.domain.sales.Payment;
+import com.fooda.api.core.domain.sales.Sale;
+import com.fooda.api.core.domain.sales.SaleLine;
+import com.fooda.api.core.domain.sales.SaleType;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
@@ -111,5 +116,75 @@ class FinanceTest {
     void inPacksRoundsToOneDecimal() {
         assertThat(Finance.inPacks(new BigDecimal("67500"), new BigDecimal("45000"))).isEqualByComparingTo("1.5");
         assertThat(Finance.inPacks(new BigDecimal("100"), BigDecimal.ZERO)).isEqualByComparingTo("0");
+    }
+
+    private static Sale sale(String date, SaleType type, int qty) {
+        return new Sale(null, LocalDate.parse(date), 1, null, type, null, null, null, null, null,
+                List.of(new SaleLine(1, 1, qty, new BigDecimal("45000"))));
+    }
+
+    private static Payment pay(String date, String amount) {
+        return new Payment(null, 1, LocalDate.parse(date), new BigDecimal(amount), PaymentMethod.TRANSFER);
+    }
+
+    private MonthlyReport report(YearMonth m, List<Production> prods, List<Sale> sales, List<Payment> pays,
+                                 List<Expense> exps, Optional<MonthClose> close, String profit) {
+        return Finance.report(m, prods, sales, pays, exps, close, settings, List.of(), new BigDecimal(profit));
+    }
+
+    @Test
+    void reportCountsPaymentsByPaymentDateAndPaidWithPacksDoesNotTouchCash() {
+        MonthlyReport r = report(NOV, List.of(prod("2026-11-04", 10)),
+                List.of(sale("2026-11-03", SaleType.RETAIL, 2), sale("2026-10-28", SaleType.RETAIL, 1),
+                        sale("2026-11-04", SaleType.PAID_WITH_PACKS, 3)),
+                List.of(pay("2026-11-03", "50000"), pay("2026-11-02", "90000")),
+                List.of(fixed("2026-11-02", "30000"), exp("2026-11-04", "90000", "mercadería", PaymentMethod.PACKS, true)),
+                Optional.empty(), "1000");
+        assertThat(r.produced()).isEqualTo(10);
+        assertThat(r.sold()).isEqualTo(2);
+        assertThat(r.soldRatio()).isEqualByComparingTo("0.2");
+        assertThat(r.sales()).isEqualByComparingTo("90000");
+        assertThat(r.payments()).isEqualByComparingTo("140000");
+        assertThat(r.paidExpenses()).isEqualByComparingTo("30000");
+        assertThat(r.cashResult()).isEqualByComparingTo("110000");
+        assertThat(r.profit()).isEqualByComparingTo("1000");
+    }
+
+    @Test
+    void reportSoldRatioIsZeroWithoutProduction() {
+        MonthlyReport r = report(YearMonth.of(2027, 1), List.of(), List.of(), List.of(), List.of(), Optional.empty(), "0");
+        assertThat(r.soldRatio()).isEqualByComparingTo("0");
+        assertThat(r.produced()).isZero();
+    }
+
+    @Test
+    void reportInPacksUsesSettingsPackPrice() {
+        MonthlyReport r = report(NOV, List.of(), List.of(), List.of(pay("2026-11-03", "67500")), List.of(),
+                Optional.empty(), "67500");
+        assertThat(r.profitInPacks()).isEqualByComparingTo("1.5");
+        assertThat(r.cashResultInPacks()).isEqualByComparingTo("1.5");
+    }
+
+    @Test
+    void reserveSharesSplitPositiveProfitOnly() {
+        List<ReserveFund> funds = List.of(new ReserveFund(1L, "Ahorro", new BigDecimal("20"), 0L),
+                new ReserveFund(2L, "Envases", BigDecimal.TEN, 0L));
+        var pos = Finance.reserveShares(new BigDecimal("100000"), funds);
+        assertThat(pos.get(0).name()).isEqualTo("Ahorro");
+        assertThat(pos.get(0).percentage()).isEqualByComparingTo("20");
+        assertThat(pos.get(0).amount()).isEqualByComparingTo("20000");
+        assertThat(pos.get(1).amount()).isEqualByComparingTo("10000");
+        var neg = Finance.reserveShares(new BigDecimal("-5"), funds);
+        assertThat(neg.get(0).amount()).isEqualByComparingTo("0");
+        assertThat(neg.get(1).amount()).isEqualByComparingTo("0");
+    }
+
+    @Test
+    void reportOverheadIsFrozenWhenTheMonthHasAClose() {
+        MonthClose close = new MonthClose(NOV, new BigDecimal("800"), LocalDate.parse("2026-12-01"));
+        AppliedOverhead o = report(NOV, List.of(), List.of(), List.of(), List.of(), Optional.of(close), "0").overhead();
+        assertThat(o.value()).isEqualByComparingTo("800");
+        assertThat(o.provisional()).isFalse();
+        assertThat(o.reference()).isFalse();
     }
 }

@@ -7,6 +7,7 @@ import com.fooda.api.core.domain.expense.PaymentMethod;
 import com.fooda.api.core.domain.finance.MonthClose;
 import com.fooda.api.production.fakes.FixedMonthCloses;
 import com.fooda.api.production.fakes.InMemoryExpenseRepository;
+import com.fooda.api.production.fakes.NoopStockLock;
 import com.fooda.api.sales.application.port.in.ExpenseInput;
 import com.fooda.api.shared.DirectTransactions;
 import com.fooda.api.shared.application.BusinessCalendar;
@@ -35,7 +36,8 @@ class ExpenseServiceTest {
     private final InMemoryExpenseRepository repo = new InMemoryExpenseRepository();
     private final InMemorySettingsRepository settings = new InMemorySettingsRepository();
     private final FixedMonthCloses closes = new FixedMonthCloses();
-    private final ExpenseService service = new ExpenseService(repo, settings, closes,
+    private final NoopStockLock lock = new NoopStockLock();
+    private final ExpenseService service = new ExpenseService(repo, settings, closes, lock,
             new BusinessCalendar(Clock.fixed(Instant.parse("2026-11-15T15:00:00Z"), ZoneOffset.UTC)),
             new DirectTransactions());
 
@@ -64,6 +66,14 @@ class ExpenseServiceTest {
 
     private Expense pesos() {
         return service.create(in(Field.absent(), f(d("1000")), Field.absent()));
+    }
+
+    @Test
+    void writesTakeTheStockLock() {
+        Expense e = pesos();
+        service.update(e.id(), patch(f(d("2000")), Field.absent()));
+        service.delete(e.id(), 1L);
+        assertThat(lock.calls).isEqualTo(3);
     }
 
     @Test

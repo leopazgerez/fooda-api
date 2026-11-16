@@ -49,6 +49,7 @@ class PurchaseServiceTest {
     private final InMemoryExpenseRepository expenseRepo = new InMemoryExpenseRepository();
     private final InMemoryBranchRepository branchRepo = new InMemoryBranchRepository();
     private final FixedMonthCloses closes = new FixedMonthCloses();
+    private final NoopStockLock purchaseLock = new NoopStockLock();
     private final BusinessCalendar calendar =
             new BusinessCalendar(Clock.fixed(Instant.parse("2026-11-15T15:00:00Z"), ZoneOffset.UTC));
     private final DirectTransactions tx = new DirectTransactions();
@@ -58,7 +59,7 @@ class PurchaseServiceTest {
             new InMemoryTransferRepository(), new InMemoryStockMovementRepository(), branchRepo,
             new NoopStockLock(), planner, calendar, tx);
     private final PurchaseUseCase service = new PurchaseService(supplyRepo, supplierRepo, settingsRepo,
-            productionRepo, purchaseRepo, expenseRepo, closes, planner, calendar, tx);
+            productionRepo, purchaseRepo, expenseRepo, closes, purchaseLock, planner, calendar, tx);
 
     private final long butcher;
     private final long greens;
@@ -260,6 +261,13 @@ class PurchaseServiceTest {
     }
 
     @Test
+    void writesTakeTheStockLock() {
+        long id = service.buyLoose(super_, null, List.of(pl(BANDEJA, "100", "7500"))).purchase().purchase().id();
+        service.annul(id, ACTOR);
+        assertThat(purchaseLock.calls).isEqualTo(2);
+    }
+
+    @Test
     void annulDropsThePricesThePurchaseAdded() {
         long id = service.buyLoose(super_, null, List.of(pl(BANDEJA, "100", "7500"))).purchase().purchase().id();
         assertThat(supplyRepo.findPrices(BANDEJA)).extracting(SupplyPrice::packagePrice)
@@ -329,6 +337,18 @@ class PurchaseServiceTest {
                 .allSatisfy(v -> assertThat(v.total()).isPositive());
         assertThatThrownBy(() -> service.list(new ListQuery(0, 20, "total", null), null))
                 .isInstanceOf(ValidationException.class);
+    }
+
+    @Test
+    void pendingListsOnlyPendingPurchasesById() {
+        ProductionSummary s = plan();
+        List<Long> pendingIds = purchaseRepo.findByProduction(s.id()).stream().map(Purchase::id).sorted().toList();
+        long loose = service.buyLoose(super_, null, List.of(pl(BANDEJA, "100", "750"))).purchase().purchase().id();
+
+        assertThat(service.pending()).extracting(v -> v.purchase().id()).containsExactlyElementsOf(pendingIds)
+                .doesNotContain(loose);
+        service.buy(pendingIds.get(0), null, List.of(pl(BANDEJA, "100", "750")));
+        assertThat(service.pending()).extracting(v -> v.purchase().id()).doesNotContain(pendingIds.get(0));
     }
 
     @Test

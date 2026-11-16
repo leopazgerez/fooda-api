@@ -124,6 +124,12 @@ public class ProductionService implements ProductionUseCase {
     }
 
     @Override
+    public List<ProductionSummary> summaries() {
+        return productions.findAll().stream().sorted(Comparator.comparingLong(Production::id))
+                .map(summarizer()).toList();
+    }
+
+    @Override
     public ProductionDetail get(long id) {
         Production p = find(id);
         return new ProductionDetail(summarizer().apply(p), p.leftovers(), transfers.findContainingProduction(id));
@@ -364,10 +370,12 @@ public class ProductionService implements ProductionUseCase {
         List<Expense> allExpenses = expenses.findAll();
         List<Supply> live = supplies.findAll();
         Map<Long, Integer> sold = soldPacks.soldByProduction();
+        Map<YearMonth, AppliedOverhead> overheads = new HashMap<>(); // one close lookup per month, not per lot
         Map<Long, String> names = packNames();
         return p -> {
             YearMonth month = YearMonth.from(p.closedOn() != null ? p.closedOn() : p.start());
-            AppliedOverhead overhead = Finance.applicable(month, monthCloses.find(month), allExpenses, all, s);
+            AppliedOverhead overhead = overheads.computeIfAbsent(month,
+                    m -> Finance.applicable(m, monthCloses.find(m), allExpenses, all, s));
             BigDecimal estimated = BigDecimal.ZERO;
             BigDecimal actual = BigDecimal.ZERO;
             List<ProductionSummary.PackLine> lines = new ArrayList<>();

@@ -12,6 +12,9 @@ public interface ProductionUseCase {
 
     Page<ProductionSummary> list(ListQuery q);
 
+    /** Every production, ordered by id. */
+    List<ProductionSummary> summaries();
+
     ProductionDetail get(long id);
 
     /** {@code start} null = today; {@code actorId} soft-deletes pending purchases that drop out. */

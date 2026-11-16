@@ -15,12 +15,11 @@ import com.fooda.api.core.application.port.out.SupplyRepository;
 import com.fooda.api.core.domain.catalog.Branch;
 import com.fooda.api.core.domain.catalog.Pack;
 import com.fooda.api.core.domain.catalog.Settings;
-import com.fooda.api.core.domain.catalog.Supply;
 import com.fooda.api.core.domain.expense.Expense;
 import com.fooda.api.core.domain.expense.PaymentMethod;
-import com.fooda.api.core.domain.finance.Finance;
+import com.fooda.api.core.domain.finance.MonthClose;
+import com.fooda.api.core.domain.finance.SaleProfits;
 import com.fooda.api.core.domain.production.Production;
-import com.fooda.api.core.domain.production.ProductionRules;
 import com.fooda.api.core.domain.sales.Customer;
 import com.fooda.api.core.domain.sales.Payment;
 import com.fooda.api.core.domain.sales.Sale;
@@ -56,6 +55,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 public class SaleService implements SaleUseCase {
 
@@ -245,12 +246,9 @@ public class SaleService implements SaleUseCase {
         private final Map<Long, String> packNames = new HashMap<>();
         private final Map<Long, String> customerNames = new HashMap<>();
         private final Map<Long, Production> lots = new HashMap<>();
-        private final Map<YearMonth, BigDecimal> overheads = new HashMap<>();
         private final Map<Long, Branch> branchById = new HashMap<>();
         private Settings s;
-        private List<Supply> live;
-        private List<Expense> allExpenses;
-        private List<Production> allProductions;
+        private SaleProfits profits;
 
         SaleView of(Sale sale, List<Payment> paid) {
             Branch branch = branchById.computeIfAbsent(sale.branchId(), id -> branches.findById(id).orElse(null));
@@ -262,11 +260,7 @@ public class SaleService implements SaleUseCase {
                             .map(Production::code).orElse(UNKNOWN), l.packId(),
                             packNames.computeIfAbsent(l.packId(), SaleService.this::packName), l.quantity(),
                             l.unitPrice())).toList();
-            BigDecimal shipping = branch == null ? BigDecimal.ZERO
-                    : SaleRules.shippingPerPack(branch, settings().packPrice());
-            BigDecimal profit = sale.lines().stream()
-                    .map(l -> SaleRules.lineProfit(l, sale, actualCost(l), shipping))
-                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+            BigDecimal profit = profits().of(sale);
             return new SaleView(sale, branch == null ? UNKNOWN : branch.name(), customer, SaleRules.packs(sale.lines()),
                     lines, SaleRules.total(sale), profit, paid);
         }
@@ -282,25 +276,13 @@ public class SaleService implements SaleUseCase {
             return s;
         }
 
-        /** Actual direct cost of the pack plus the overhead of the lot's month; 0 if the lot is gone. */
-        private BigDecimal actualCost(SaleLine l) {
-            Production p = lot(l.productionId()).orElse(null);
-            if (p == null) {
-                return BigDecimal.ZERO;
+        private SaleProfits profits() {
+            if (profits == null) {
+                // closes looked up per lot month (memoized there), not all loaded
+                profits = new SaleProfits(productions.findAll(), supplies.findAll(), expenses.findAll(), monthCloses::find,
+                        settings(), branches.findAll());
             }
-            if (live == null) {
-                live = supplies.findAll();
-            }
-            YearMonth month = YearMonth.from(p.closedOn() != null ? p.closedOn() : p.start());
-            BigDecimal overhead = overheads.computeIfAbsent(month, m -> {
-                if (allExpenses == null) {
-                    allExpenses = expenses.findAll();
-                    allProductions = productions.findAll();
-                }
-                return Finance.applicable(m, monthCloses.find(m), allExpenses, allProductions, settings())
-                        .value();
-            });
-            return ProductionRules.packCost(p, l.packId(), live).actual().add(overhead);
+            return profits;
         }
     }
 }

@@ -22,5 +22,8 @@ public interface PurchaseUseCase {
     /** {@code actorId} soft-deletes the expense, the loose purchase or pending purchases that drop out. */
     void annul(long id, long actorId);
 
+    /** Purchases still {@code PENDING}, ordered by id. */
+    List<PurchaseView> pending();
+
     PackagingStatus packaging();
 }

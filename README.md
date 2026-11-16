@@ -110,7 +110,7 @@ Errores: siempre JSON `{message, status, timestamp}` y, si aplica, `field` (por 
 | `DELETE /api/purchases/{id}` | Anula la compra (borra su gasto); una pendiente de producción vuelve a `pending` |
 | `GET /api/packaging` | Estado de bandejas y stickers |
 
-`sold` sale de las ventas vivas del lote; hasta el bloque 5 ningún mes figura como cerrado.
+`sold` sale de las ventas vivas del lote.
 
 ### Stock
 
@@ -155,6 +155,24 @@ Errores: siempre JSON `{message, status, timestamp}` y, si aplica, `field` (por 
 - **Clientes:** `regular` marca al cliente habitual; `follow-ups` lista a quienes hace tiempo no compran y los cumpleaños del día (el 29 de febrero se muestra el 28 en años no bisiestos). 409 al borrar si tiene ventas vivas.
 - **Gastos:** `amount` en pesos o `amountPacks` (se convierte con el precio del pack y se guarda `packPrice`); no ambos. Los generados por una compra o una venta no se editan ni se borran (409 en `origin`); un mes cerrado también da 409.
 - Las reglas viven en `core/domain/sales`; el flujo completo está en `SalesFlowTest`.
+
+### Finanzas, análisis y dashboard
+
+`GET` con `FINANCE_READ`; las escrituras con `FINANCE_WRITE` (hoy solo `ADMIN`).
+
+| Método y ruta | Qué hace |
+|---|---|
+| `GET /api/finance/monthly` | Un objeto por mes: `{month, produced, sold, soldRatio, sales, payments, paidExpenses, cashResult, closed, closedOn, overhead:{value, provisional, reference}, profit, profitInPacks, cashResultInPacks, reserves:[{name, percentage, amount}]}` |
+| `POST /api/finance/month-closes` `{month:"YYYY-MM"}` | 201 + `Location`, guarda la foto del mes. 400 en `month` si es inválido o posterior al actual; 409 "Ese mes ya está cerrado" |
+| `DELETE /api/finance/month-closes/{month}` | 204, reabre el mes. 404 "Ese mes no está cerrado" |
+| `GET /api/analysis/packs?from=&to=&groupBy=month\|week` | `{from, to, groupBy, rows:[{period, packId, pack, branchId, branch, quantity, amount}], changes:[{packId, pack, validFrom, versionId}]}` de ventas por pack y sede |
+| `GET /api/analysis/packs/{id}/version-at?date=` | Versión del pack vigente en esa fecha |
+| `GET /api/dashboard` | `{today, month, salesPreviousMonthSamePeriod, stockByBranch, salesByPack, productions, payback, notices:{followUps, birthdays, lowPackaging, pendingPurchases}}` |
+
+- **Foto del mes cerrado:** al cerrar se guarda el cálculo del mes como `jsonb` (`month_close`). `GET /api/finance/monthly` devuelve esa foto para los meses cerrados (`closed: true`), así que cambiar el precio del pack o los ajustes después no la altera; los meses abiertos se calculan en vivo.
+- **Mes cerrado:** toda escritura con fecha en ese mes (ventas, gastos, traslados, ajustes, compras, cierre y reapertura de producciones) da 409 con `field: "date"` y "Ese mes está cerrado".
+- **Reapertura:** `DELETE /api/finance/month-closes/{month}` borra la foto y vuelve a permitir las escrituras; el mes se recalcula en vivo.
+- Las reglas viven en `core/domain/finance`; el flujo completo está en `FinanceFlowTest`.
 
 ### Cosas a tener en cuenta
 

@@ -46,7 +46,8 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
             "supply_packaging_key", new String[]{"packagingType", "Ya hay un insumo marcado como ese envase"},
             "pack_number_key", new String[]{"number", "Ya existe un pack con ese número"},
             "branch_one_kitchen", new String[]{"kitchen", "Ya hay una sede marcada como cocina"},
-            "production_code_key", new String[]{"code", "Ya existe una producción con ese código; reintentá"});
+            "production_code_key", new String[]{"code", "Ya existe una producción con ese código; reintentá"},
+            "month_close_month_key", new String[]{"month", "Ese mes ya está cerrado"});
 
     private final Clock clock;
 

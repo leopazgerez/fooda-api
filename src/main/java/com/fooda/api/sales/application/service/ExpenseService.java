@@ -3,6 +3,7 @@ package com.fooda.api.sales.application.service;
 import com.fooda.api.core.application.port.out.ExpenseRepository;
 import com.fooda.api.core.application.port.out.MonthCloseRepository;
 import com.fooda.api.core.application.port.out.SettingsRepository;
+import com.fooda.api.core.application.port.out.StockLock;
 import com.fooda.api.core.domain.expense.Expense;
 import com.fooda.api.core.domain.expense.PaymentMethod;
 import com.fooda.api.sales.application.port.in.ExpenseInput;
@@ -32,14 +33,16 @@ public class ExpenseService implements ExpenseUseCase {
     private final ExpenseRepository expenses;
     private final SettingsRepository settings;
     private final MonthCloseRepository monthCloses;
+    private final StockLock stockLock;
     private final BusinessCalendar calendar;
     private final Transactions tx;
 
     public ExpenseService(ExpenseRepository expenses, SettingsRepository settings, MonthCloseRepository monthCloses,
-                          BusinessCalendar calendar, Transactions tx) {
+                          StockLock stockLock, BusinessCalendar calendar, Transactions tx) {
         this.expenses = expenses;
         this.settings = settings;
         this.monthCloses = monthCloses;
+        this.stockLock = stockLock;
         this.calendar = calendar;
         this.tx = tx;
     }
@@ -57,6 +60,7 @@ public class ExpenseService implements ExpenseUseCase {
     @Override
     public Expense create(ExpenseInput in) {
         return tx.get(() -> {
+            stockLock.lock(); // serializes with month close/reopen
             LocalDate date = calendar.orToday(in.date().or(null));
             monthCloses.requireOpen(date);
             BigDecimal amount = in.amount().or(null);
@@ -81,6 +85,7 @@ public class ExpenseService implements ExpenseUseCase {
     @Override
     public Expense update(long id, ExpenseInput in) {
         return tx.get(() -> {
+            stockLock.lock(); // serializes with month close/reopen
             Expense e = get(id);
             requireManual(e);
             monthCloses.requireOpen(e.date());
@@ -120,6 +125,7 @@ public class ExpenseService implements ExpenseUseCase {
     @Override
     public void delete(long id, long actorId) {
         tx.run(() -> {
+            stockLock.lock(); // serializes with month close/reopen
             Expense e = get(id);
             requireManual(e);
             monthCloses.requireOpen(e.date());

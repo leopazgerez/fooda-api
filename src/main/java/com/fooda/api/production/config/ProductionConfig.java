@@ -49,9 +49,9 @@ public class ProductionConfig {
     PurchaseService purchaseService(SupplyRepository supplies, SupplierRepository suppliers,
                                     SettingsRepository settings, ProductionRepository productions,
                                     PurchaseRepository purchases, ExpenseRepository expenses,
-                                    MonthCloseRepository monthCloses, PurchasePlanner planner,
+                                    MonthCloseRepository monthCloses, StockLock stockLock, PurchasePlanner planner,
                                     BusinessCalendar calendar, Transactions tx) {
         return new PurchaseService(supplies, suppliers, settings, productions, purchases, expenses, monthCloses,
-                planner, calendar, tx);
+                stockLock, planner, calendar, tx);
     }
 }

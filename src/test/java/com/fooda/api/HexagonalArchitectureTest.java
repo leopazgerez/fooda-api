@@ -5,6 +5,9 @@ import com.tngtech.archunit.junit.AnalyzeClasses;
 import com.tngtech.archunit.junit.ArchTest;
 import com.tngtech.archunit.lang.ArchRule;
 
+import static com.tngtech.archunit.base.DescribedPredicate.not;
+import static com.tngtech.archunit.core.domain.JavaClass.Predicates.resideInAPackage;
+import static com.tngtech.archunit.core.domain.JavaClass.Predicates.resideInAnyPackage;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 
@@ -27,31 +30,31 @@ class HexagonalArchitectureTest {
     @ArchTest
     static final ArchRule catalogIsIsolated = noClasses()
             .that().resideInAPackage("com.fooda.api.catalog..")
-            .should().dependOnClassesThat().resideInAnyPackage("com.fooda.api.production..", "com.fooda.api.stock..", "com.fooda.api.sales..", "com.fooda.api.finance..")
+            .should().dependOnClassesThat().resideInAnyPackage("com.fooda.api.production..", "com.fooda.api.stock..", "com.fooda.api.sales..", "com.fooda.api.finance..", "com.fooda.api.dashboard..")
             .allowEmptyShould(true);
 
     @ArchTest
     static final ArchRule productionIsIsolated = noClasses()
             .that().resideInAPackage("com.fooda.api.production..")
-            .should().dependOnClassesThat().resideInAnyPackage("com.fooda.api.catalog..", "com.fooda.api.stock..", "com.fooda.api.sales..", "com.fooda.api.finance..")
+            .should().dependOnClassesThat().resideInAnyPackage("com.fooda.api.catalog..", "com.fooda.api.stock..", "com.fooda.api.sales..", "com.fooda.api.finance..", "com.fooda.api.dashboard..")
             .allowEmptyShould(true);
 
     @ArchTest
     static final ArchRule stockIsIsolated = noClasses()
             .that().resideInAPackage("com.fooda.api.stock..")
-            .should().dependOnClassesThat().resideInAnyPackage("com.fooda.api.catalog..", "com.fooda.api.production..", "com.fooda.api.sales..", "com.fooda.api.finance..")
+            .should().dependOnClassesThat().resideInAnyPackage("com.fooda.api.catalog..", "com.fooda.api.production..", "com.fooda.api.sales..", "com.fooda.api.finance..", "com.fooda.api.dashboard..")
             .allowEmptyShould(true);
 
     @ArchTest
     static final ArchRule salesIsIsolated = noClasses()
             .that().resideInAPackage("com.fooda.api.sales..")
-            .should().dependOnClassesThat().resideInAnyPackage("com.fooda.api.catalog..", "com.fooda.api.production..", "com.fooda.api.stock..", "com.fooda.api.finance..")
+            .should().dependOnClassesThat().resideInAnyPackage("com.fooda.api.catalog..", "com.fooda.api.production..", "com.fooda.api.stock..", "com.fooda.api.finance..", "com.fooda.api.dashboard..")
             .allowEmptyShould(true);
 
     @ArchTest
     static final ArchRule financeIsIsolated = noClasses()
             .that().resideInAPackage("com.fooda.api.finance..")
-            .should().dependOnClassesThat().resideInAnyPackage("com.fooda.api.catalog..", "com.fooda.api.production..", "com.fooda.api.stock..", "com.fooda.api.sales..")
+            .should().dependOnClassesThat().resideInAnyPackage("com.fooda.api.catalog..", "com.fooda.api.production..", "com.fooda.api.stock..", "com.fooda.api.sales..", "com.fooda.api.dashboard..")
             .allowEmptyShould(true);
 
     @ArchTest
@@ -59,6 +62,15 @@ class HexagonalArchitectureTest {
             .that().resideInAPackage("com.fooda.api.core..")
             .should().dependOnClassesThat().resideInAnyPackage(
                     "com.fooda.api.catalog..", "com.fooda.api.production..", "com.fooda.api.stock..",
-                    "com.fooda.api.sales..", "com.fooda.api.finance..", "com.fooda.api.user..", "com.fooda.api.auth..")
+                    "com.fooda.api.sales..", "com.fooda.api.finance..", "com.fooda.api.dashboard..", "com.fooda.api.user..",
+                    "com.fooda.api.auth..")
+            .allowEmptyShould(true);
+
+    @ArchTest
+    static final ArchRule dashboardUsesOnlyInPorts = noClasses()
+            .that().resideInAPackage("com.fooda.api.dashboard..")
+            .should().dependOnClassesThat(resideInAnyPackage("com.fooda.api.catalog..", "com.fooda.api.production..",
+                    "com.fooda.api.stock..", "com.fooda.api.sales..", "com.fooda.api.finance..")
+                    .and(not(resideInAPackage("..application.port.in.."))))
             .allowEmptyShould(true);
 }

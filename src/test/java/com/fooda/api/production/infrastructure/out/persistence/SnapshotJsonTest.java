@@ -55,7 +55,7 @@ class SnapshotJsonTest {
     @Test
     void writesCodesAndPlainDecimals() {
         ProductionSnapshot s = ProductionPersistenceAdapter.snapshot(STORED);
-        String json = ProductionPersistenceAdapter.JSON.writeValueAsString(SnapshotJson.of(s));
+        String json = com.fooda.api.shared.infrastructure.out.persistence.JsonbMapper.JSON.writeValueAsString(SnapshotJson.of(s));
 
         assertThat(json).contains("\"unit\":\"u\"", "\"packagingType\":\"tray\"", "\"rule\":\"max\"",
                 "0.0000001").doesNotContain("E-", "\"TRAY\"");

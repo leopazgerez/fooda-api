@@ -5,6 +5,7 @@ import com.fooda.api.core.application.port.out.MonthCloseRepository;
 import com.fooda.api.core.application.port.out.ProductionRepository;
 import com.fooda.api.core.application.port.out.PurchaseRepository;
 import com.fooda.api.core.application.port.out.SettingsRepository;
+import com.fooda.api.core.application.port.out.StockLock;
 import com.fooda.api.core.application.port.out.SupplierRepository;
 import com.fooda.api.core.application.port.out.SupplyRepository;
 import com.fooda.api.core.domain.catalog.Costs;
@@ -63,14 +64,15 @@ public class PurchaseService implements PurchaseUseCase {
     private final PurchaseRepository purchases;
     private final ExpenseRepository expenses;
     private final MonthCloseRepository monthCloses;
+    private final StockLock stockLock;
     private final PurchasePlanner planner;
     private final BusinessCalendar calendar;
     private final Transactions tx;
 
     public PurchaseService(SupplyRepository supplies, SupplierRepository suppliers, SettingsRepository settings,
                            ProductionRepository productions, PurchaseRepository purchases,
-                           ExpenseRepository expenses, MonthCloseRepository monthCloses, PurchasePlanner planner,
-                           BusinessCalendar calendar, Transactions tx) {
+                           ExpenseRepository expenses, MonthCloseRepository monthCloses, StockLock stockLock,
+                           PurchasePlanner planner, BusinessCalendar calendar, Transactions tx) {
         this.supplies = supplies;
         this.suppliers = suppliers;
         this.settings = settings;
@@ -78,6 +80,7 @@ public class PurchaseService implements PurchaseUseCase {
         this.purchases = purchases;
         this.expenses = expenses;
         this.monthCloses = monthCloses;
+        this.stockLock = stockLock;
         this.planner = planner;
         this.calendar = calendar;
         this.tx = tx;
@@ -91,6 +94,12 @@ public class PurchaseService implements PurchaseUseCase {
     }
 
     @Override
+    public List<PurchaseView> pending() {
+        return purchases.findAll().stream().filter(p -> p.status() == PurchaseStatus.PENDING)
+                .sorted(Comparator.comparingLong(Purchase::id)).map(viewer()).toList();
+    }
+
+    @Override
     public PurchaseView get(long id) {
         return viewer().apply(purchases.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Compra no encontrada")));
@@ -99,6 +108,7 @@ public class PurchaseService implements PurchaseUseCase {
     @Override
     public BoughtPurchase buy(long id, LocalDate date, List<PurchaseLine> lines) {
         return tx.get(() -> {
+            stockLock.lock(); // serializes with month close/reopen
             Purchase p = purchases.findById(id)
                     .orElseThrow(() -> new ResourceNotFoundException("Compra no encontrada"));
             if (p.status() == PurchaseStatus.BOUGHT) {
@@ -111,6 +121,7 @@ public class PurchaseService implements PurchaseUseCase {
     @Override
     public BoughtPurchase buyLoose(long supplierId, LocalDate date, List<PurchaseLine> lines) {
         return tx.get(() -> {
+            stockLock.lock(); // serializes with month close/reopen
             suppliers.findById(supplierId).orElseThrow(() -> new ResourceNotFoundException("Proveedor no encontrado"));
             return register(new Purchase(null, null, supplierId, PurchaseStatus.PENDING, null, null, null, null),
                     date, lines);
@@ -120,6 +131,7 @@ public class PurchaseService implements PurchaseUseCase {
     @Override
     public void annul(long id, long actorId) {
         tx.run(() -> {
+            stockLock.lock(); // serializes with month close/reopen
             Purchase p = purchases.findById(id)
                     .orElseThrow(() -> new ResourceNotFoundException("Compra no encontrada"));
             if (p.status() != PurchaseStatus.BOUGHT) {

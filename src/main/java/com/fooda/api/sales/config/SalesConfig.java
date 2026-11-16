@@ -28,8 +28,9 @@ public class SalesConfig {
 
     @Bean
     ExpenseUseCase expenseUseCase(ExpenseRepository expenses, SettingsRepository settings,
-                                  MonthCloseRepository monthCloses, BusinessCalendar calendar, Transactions tx) {
-        return new ExpenseService(expenses, settings, monthCloses, calendar, tx);
+                                  MonthCloseRepository monthCloses, StockLock stockLock,
+                                  BusinessCalendar calendar, Transactions tx) {
+        return new ExpenseService(expenses, settings, monthCloses, stockLock, calendar, tx);
     }
 
     @Bean

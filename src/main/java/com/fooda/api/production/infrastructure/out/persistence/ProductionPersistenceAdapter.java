@@ -11,10 +11,7 @@ import org.springframework.data.domain.AuditorAware;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
-import tools.jackson.core.StreamWriteFeature;
 import tools.jackson.core.type.TypeReference;
-import tools.jackson.databind.DeserializationFeature;
-import tools.jackson.databind.json.JsonMapper;
 
 import java.math.BigDecimal;
 import java.time.Clock;
@@ -25,15 +22,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+import static com.fooda.api.shared.infrastructure.out.persistence.JsonbMapper.JSON;
+
 @Repository // translates the force-increment's OptimisticLockException into Spring's (→ 409)
 public class ProductionPersistenceAdapter implements ProductionRepository {
 
     private static final TypeReference<Map<Long, BigDecimal>> DECIMALS = new TypeReference<>() { };
-    /** Fixed format for the JSONB columns, independent of spring.jackson.* (spec §5.7). */
-    static final JsonMapper JSON = JsonMapper.builder()
-            .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
-            .enable(StreamWriteFeature.WRITE_BIGDECIMAL_AS_PLAIN)
-            .build();
 
     private final ProductionJpaRepository productions;
     private final ProductionLineJpaRepository lines;

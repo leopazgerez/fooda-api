@@ -252,6 +252,13 @@ class ProductionServiceTest {
     }
 
     @Test
+    void summariesAreEveryProductionOrderedById() {
+        existing(2, "2026-11-05", ProductionStatus.PLANNED);
+        existing(1, "2026-11-02", ProductionStatus.CLOSED);
+        assertThat(service.summaries()).extracting(ProductionSummary::id).containsExactly(1L, 2L);
+    }
+
+    @Test
     void listSortsByStartDescByDefaultWithIdTieBreak() {
         Production a = existing(1, "2026-11-02", ProductionStatus.CLOSED);
         Production b = existing(2, "2026-11-05", ProductionStatus.PLANNED);
