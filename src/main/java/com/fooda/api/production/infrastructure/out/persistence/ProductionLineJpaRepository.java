@@ -14,6 +14,8 @@ interface ProductionLineJpaRepository extends JpaRepository<ProductionLineJpaEnt
 
     List<ProductionLineJpaEntity> findAllByOrderById();
 
+    List<ProductionLineJpaEntity> findByProductionIdInOrderById(java.util.Collection<Long> productionIds);
+
     @Query("select count(l) > 0 from ProductionLineJpaEntity l where l.packId = :packId and l.deletedAt is null "
             + "and exists (select 1 from ProductionJpaEntity p where p.id = l.productionId and p.deletedAt is null)")
     boolean isPackUsed(@Param("packId") long packId);

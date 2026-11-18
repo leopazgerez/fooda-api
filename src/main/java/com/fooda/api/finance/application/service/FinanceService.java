@@ -33,12 +33,15 @@ import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.time.format.DateTimeParseException;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
+import java.util.TreeMap;
 import java.util.TreeSet;
-import java.util.stream.Stream;
 
 public class FinanceService implements FinanceUseCase {
 
@@ -75,10 +78,9 @@ public class FinanceService implements FinanceUseCase {
         this.tx = tx;
     }
 
-    /** Everything a month report reads, loaded once. */
+    /** Everything the reports of a range of months read, loaded once. */
     private record Data(List<Production> productions, List<Sale> sales, List<Payment> payments,
-                        List<Expense> expenses, Settings settings, List<ReserveFund> funds,
-                        Map<YearMonth, MonthClose> closes, SaleProfits profits) {
+                        List<Expense> expenses, Settings settings, List<ReserveFund> funds, SaleProfits profits) {
 
         MonthlyReport report(YearMonth month, Optional<MonthClose> close) {
             BigDecimal profit = sales.stream().filter(s -> YearMonth.from(s.date()).equals(month))
@@ -87,40 +89,65 @@ public class FinanceService implements FinanceUseCase {
         }
     }
 
-    /** {@code closes} stays mutable: close() adds its draft before any profit reads it. */
-    private Data load() {
+    /** Mutable: close() adds its draft before any profit reads it. */
+    private Map<YearMonth, MonthClose> closes() {
         Map<YearMonth, MonthClose> closes = new HashMap<>();
         monthCloses.findAll().forEach(c -> closes.put(c.month(), c));
+        return closes;
+    }
+
+    /**
+     * Sales, payments, expenses and closed lots of [from, to]; plus what their profit reads: the sold lots and,
+     * for each lot month outside the range that is not closed (a close freezes it), that month's overhead inputs
+     * (its expenses and lots closed in it).
+     */
+    private Data load(YearMonth from, YearMonth to, Map<YearMonth, MonthClose> closes) {
         Settings s = settings.require();
-        List<Production> prods = productions.findAll();
-        List<Expense> exps = expenses.findAll();
-        return new Data(prods, sales.findAll(), payments.findAll(), exps, s, funds.findAll(), closes,
-                new SaleProfits(prods, supplies.findAll(), exps, m -> Optional.ofNullable(closes.get(m)), s,
+        List<Sale> ss = sales.findBetween(from.atDay(1), to.atEndOfMonth());
+        List<Expense> exps = new ArrayList<>(expenses.findBetween(from.atDay(1), to.atEndOfMonth()));
+        Map<Long, Production> prods = new TreeMap<>();
+        productions.findClosedBetween(from.atDay(1), to.atEndOfMonth()).forEach(p -> prods.put(p.id(), p));
+        Set<Long> lotIds = new HashSet<>();
+        ss.forEach(x -> x.lines().forEach(l -> lotIds.add(l.productionId())));
+        List<Production> lots = productions.findAllById(lotIds);
+        lots.stream().map(p -> YearMonth.from(p.closedOn() != null ? p.closedOn() : p.start()))
+                .filter(m -> (m.isBefore(from) || m.isAfter(to)) && !closes.containsKey(m)).distinct()
+                .forEach(m -> {
+                    exps.addAll(expenses.findBetween(m.atDay(1), m.atEndOfMonth()));
+                    productions.findClosedBetween(m.atDay(1), m.atEndOfMonth()).forEach(p -> prods.put(p.id(), p));
+                });
+        lots.forEach(p -> prods.put(p.id(), p));
+        List<Production> all = List.copyOf(prods.values());
+        return new Data(all, ss, payments.findBetween(from.atDay(1), to.atEndOfMonth()), exps, s, funds.findAll(),
+                new SaleProfits(all, supplies.findAll(), exps, m -> Optional.ofNullable(closes.get(m)), s,
                         branches.findAll()));
     }
 
-    private static MonthlyView view(Data d, YearMonth month) {
-        MonthClose close = d.closes().get(month);
+    private static MonthlyView view(Data d, Map<YearMonth, MonthClose> closes, YearMonth month) {
+        MonthClose close = closes.get(month);
         return close != null ? new MonthlyView(close.report(), close.closedOn())
                 : new MonthlyView(d.report(month, Optional.empty()), null);
     }
 
     @Override
     public List<MonthlyView> monthly() {
-        Data d = load();
-        TreeSet<YearMonth> months = new TreeSet<>();
-        d.sales().forEach(s -> months.add(YearMonth.from(s.date())));
-        d.expenses().forEach(e -> months.add(YearMonth.from(e.date())));
-        d.payments().forEach(p -> months.add(YearMonth.from(p.date())));
-        d.productions().forEach(p -> months.add(YearMonth.from(p.closedOn() != null ? p.closedOn() : p.start())));
-        months.addAll(d.closes().keySet());
+        Map<YearMonth, MonthClose> closes = closes();
+        TreeSet<YearMonth> months = new TreeSet<>(closes.keySet());
+        months.addAll(sales.months());
+        months.addAll(expenses.months());
+        months.addAll(payments.months());
+        months.addAll(productions.months());
         months.add(YearMonth.from(calendar.today()));
-        return months.descendingSet().stream().limit(MAX_MONTHS).map(m -> view(d, m)).toList();
+        List<YearMonth> shown = months.descendingSet().stream().limit(MAX_MONTHS).toList();
+        List<YearMonth> open = shown.stream().filter(m -> !closes.containsKey(m)).toList();
+        Data d = open.isEmpty() ? null : load(open.get(open.size() - 1), open.get(0), closes);
+        return shown.stream().map(m -> view(d, closes, m)).toList();
     }
 
     @Override
     public MonthlyView month(YearMonth month) {
-        return view(load(), month);
+        Map<YearMonth, MonthClose> closes = closes();
+        return view(closes.containsKey(month) ? null : load(month, month, closes), closes, month);
     }
 
     @Override
@@ -135,11 +162,12 @@ public class FinanceService implements FinanceUseCase {
             if (monthCloses.find(month).isPresent()) {
                 throw new ConflictException("month", "Ese mes ya está cerrado");
             }
-            Data d = load();
+            Map<YearMonth, MonthClose> closes = closes();
+            Data d = load(month, month, closes);
             BigDecimal overhead = Finance.overheadOfMonth(month, d.expenses(), d.productions());
             overhead = overhead == null ? null : overhead.setScale(4, RoundingMode.HALF_UP);
             MonthClose draft = new MonthClose(month, overhead, today);
-            d.closes().put(month, draft);
+            closes.put(month, draft);
             MonthlyReport report = d.report(month, Optional.of(draft));
             monthCloses.add(new MonthClose(month, overhead, today, report));
             return new MonthlyView(report, today);

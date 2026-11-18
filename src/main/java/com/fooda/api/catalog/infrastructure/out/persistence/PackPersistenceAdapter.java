@@ -44,6 +44,13 @@ public class PackPersistenceAdapter implements PackRepository {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public List<Pack> findAllById(java.util.Collection<Long> ids) {
+        return packs.findAllById(ids).stream().sorted(java.util.Comparator.comparingInt(e -> e.number))
+                .map(PackPersistenceAdapter::toDomain).toList();
+    }
+
+    @Override
     @Transactional
     public Pack save(Pack p) {
         PackJpaEntity e = new PackJpaEntity();

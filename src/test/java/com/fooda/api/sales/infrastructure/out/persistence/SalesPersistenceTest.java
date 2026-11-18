@@ -9,6 +9,9 @@ import com.fooda.api.core.domain.sales.Payment;
 import com.fooda.api.core.domain.sales.Sale;
 import com.fooda.api.core.domain.sales.SaleLine;
 import com.fooda.api.core.domain.sales.SaleType;
+import com.fooda.api.core.application.port.out.SaleCriteria;
+import com.fooda.api.shared.application.ListQuery;
+import com.fooda.api.shared.application.Listing;
 import com.fooda.api.support.Actors;
 import com.fooda.api.support.Db;
 import com.fooda.api.support.Rows;
@@ -155,5 +158,103 @@ class SalesPersistenceTest {
         assertThatThrownBy(() -> jdbc.update("insert into payment (sale_id, payment_date, amount, method,"
                 + " created_at, created_by, updated_at, updated_by) values (?, current_date, 0, 'cash', now(), ?, now(), ?)",
                 s.id(), actor, actor)).isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    @Test
+    void pageMatchesListingOverFindAll() {
+        long branch2 = Rows.branch(jdbc, actor);
+        long customer = Rows.customer(jdbc, actor);
+        SaleType[] types = {SaleType.RETAIL, SaleType.WHOLESALE, SaleType.INTERNAL_USE};
+        List<Long> ids = new java.util.ArrayList<>();
+        for (int i = 0; i < 30; i++) {
+            SaleType t = types[i % 3];
+            Sale base = sale(t, i % 2 == 0 ? customer : null, 1 + i % 4);
+            ids.add(sales.add(new Sale(null, LocalDate.of(2026, 3, 1 + i % 6), i % 5 == 0 ? branch2 : branch,
+                    base.customerId(), t, base.reason(), base.method(), base.discount(), base.shipping(), "n",
+                    base.lines())).id());
+        }
+        sales.softDelete(ids.get(7), actor);
+        reload();
+
+        var sortable = java.util.Map.<String, java.util.Comparator<Sale>>of(
+                "date", java.util.Comparator.comparing(Sale::date), "id", java.util.Comparator.comparingLong(Sale::id));
+        var byId = java.util.Comparator.comparingLong(Sale::id);
+        var criteria = List.of(
+                new SaleCriteria(null, null, null, null, null),
+                new SaleCriteria(branch2, null, null, null, null),
+                new SaleCriteria(null, SaleType.WHOLESALE, null, null, null),
+                new SaleCriteria(branch, null, customer, LocalDate.of(2026, 3, 2), LocalDate.of(2026, 3, 4)),
+                new SaleCriteria(null, SaleType.RETAIL, null, LocalDate.of(2026, 3, 3), null),
+                new SaleCriteria(null, null, null, null, LocalDate.of(2026, 3, 2)));
+        for (SaleCriteria c : criteria) {
+            var filtered = sales.findAll().stream()
+                    .filter(s -> (c.branchId() == null || c.branchId() == s.branchId())
+                            && (c.type() == null || c.type() == s.type())
+                            && (c.customerId() == null || c.customerId().equals(s.customerId()))
+                            && (c.from() == null || !s.date().isBefore(c.from()))
+                            && (c.to() == null || !s.date().isAfter(c.to()))).toList();
+            for (String sort : new String[]{null, "date", "id"}) {
+                for (String dir : new String[]{null, "asc", "desc"}) {
+                    for (int page = 0; page < 3; page++) {
+                        ListQuery q = new ListQuery(page, 4, sort, dir);
+                        var expected = Listing.page(filtered, q, sortable, "date", "desc", byId);
+                        var actual = sales.page(c, q);
+                        assertThat(actual.items().stream().map(Sale::id).toList())
+                                .as("%s %s %s %d", c, sort, dir, page)
+                                .isEqualTo(expected.items().stream().map(Sale::id).toList());
+                        assertThat(actual.total()).isEqualTo(expected.total());
+                        assertThat(actual.items()).allSatisfy(s -> assertThat(s.lines()).hasSize(1));
+                    }
+                }
+            }
+        }
+        assertThatThrownBy(() -> sales.page(criteria.get(0), new ListQuery(0, 4, "bogus", null)))
+                .isInstanceOf(com.fooda.api.shared.domain.ValidationException.class);
+    }
+
+    @Test
+    void findBetweenAndMonthsMatchFilteringFindAll() {
+        LocalDate from = LocalDate.of(2026, 3, 1);
+        LocalDate to = LocalDate.of(2026, 3, 31);
+        List<Long> ids = new java.util.ArrayList<>();
+        for (LocalDate d : List.of(LocalDate.of(2026, 2, 28), from, LocalDate.of(2026, 3, 15), to,
+                LocalDate.of(2026, 4, 1), LocalDate.of(2026, 3, 20))) {
+            Sale base = sale(SaleType.RETAIL, null, 1);
+            Sale s = sales.add(new Sale(null, d, branch, null, base.type(), null, base.method(), base.discount(),
+                    base.shipping(), null, base.lines()));
+            ids.add(s.id());
+            payments.add(new Payment(null, s.id(), d.plusDays(1), new BigDecimal("1.00"), PaymentMethod.CASH));
+        }
+        sales.softDelete(ids.get(5), actor);
+        payments.softDeleteBySale(ids.get(5), actor);
+        sales.add(new Sale(null, LocalDate.of(2025, 12, 1), branch, null, SaleType.RETAIL, null, PaymentMethod.CASH,
+                null, null, null, sale(SaleType.RETAIL, null, 1).lines()));
+        reload();
+
+        assertThat(sales.findBetween(from, to)).isEqualTo(sales.findAll().stream()
+                .filter(s -> !s.date().isBefore(from) && !s.date().isAfter(to)).toList()).hasSize(3);
+        assertThat(sales.months()).isEqualTo(sales.findAll().stream().map(s -> java.time.YearMonth.from(s.date()))
+                .collect(java.util.stream.Collectors.toSet())).hasSize(4);
+        assertThat(payments.findBetween(from, to)).isEqualTo(payments.findAll().stream()
+                .filter(p -> !p.date().isBefore(from) && !p.date().isAfter(to)).toList()).hasSize(3);
+        assertThat(payments.months()).isEqualTo(payments.findAll().stream().map(p -> java.time.YearMonth.from(p.date()))
+                .collect(java.util.stream.Collectors.toSet())).hasSize(2);
+    }
+
+    @Test
+    void findWithCustomerMatchesFilteringFindAll() {
+        long customer = Rows.customer(jdbc, actor);
+        long other = Rows.customer(jdbc, actor);
+        Sale a = sales.add(sale(SaleType.RETAIL, customer, 1));
+        sales.add(sale(SaleType.RETAIL, null, 2));
+        sales.add(sale(SaleType.WHOLESALE, other, 3));
+        Sale deleted = sales.add(sale(SaleType.RETAIL, customer, 1));
+        sales.add(sale(SaleType.RETAIL, customer, 4));
+        sales.softDelete(deleted.id(), actor);
+        reload();
+
+        assertThat(sales.findWithCustomer()).isEqualTo(sales.findAll().stream()
+                .filter(s -> s.customerId() != null).toList()).hasSize(3)
+                .first().isEqualTo(sales.findById(a.id()).orElseThrow());
     }
 }

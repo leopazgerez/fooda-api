@@ -3,6 +3,7 @@ package com.fooda.api.core.application.port.out;
 import com.fooda.api.core.domain.catalog.Pack;
 import com.fooda.api.core.domain.catalog.PackVersion;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -11,6 +12,9 @@ public interface PackRepository {
     List<Pack> findAll();
 
     Optional<Pack> findById(long id);
+
+    /** Live packs with those ids, ordered like {@link #findAll()}; unknown ids are skipped. */
+    List<Pack> findAllById(Collection<Long> ids);
 
     Pack save(Pack p);
 

@@ -2,9 +2,12 @@ package com.fooda.api.core.application.port.out;
 
 import com.fooda.api.core.domain.production.Production;
 
+import java.time.LocalDate;
 import java.time.YearMonth;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 public interface ProductionRepository {
 
@@ -14,6 +17,15 @@ public interface ProductionRepository {
     int maxNumber(YearMonth month);
 
     Optional<Production> findById(long id);
+
+    /** Live productions with those ids, by id; unknown ids are skipped. */
+    List<Production> findAllById(Collection<Long> ids);
+
+    /** Live productions closed in [from, to], by id. */
+    List<Production> findClosedBetween(LocalDate from, LocalDate to);
+
+    /** Months of live productions: of closedOn, or of start while not closed. */
+    Set<YearMonth> months();
 
     /** The live INICIAL lot (number 0), if it was created. */
     Optional<Production> findInitial();

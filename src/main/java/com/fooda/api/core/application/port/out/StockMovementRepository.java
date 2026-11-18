@@ -1,7 +1,9 @@
 package com.fooda.api.core.application.port.out;
 
 import com.fooda.api.core.domain.stock.StockMovement;
+import com.fooda.api.core.domain.stock.StockRow;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -13,6 +15,12 @@ public interface StockMovementRepository {
 
     /** Live movements, by id. */
     List<StockMovement> findAll();
+
+    /** Live movements of the branch for those productions, any date, by id. */
+    List<StockMovement> findByBranchAndProductions(long branchId, Collection<Long> productionIds);
+
+    /** Same content and order as {@code StockRules.current(findAll())}, summed in the database. */
+    List<StockRow> currentStock();
 
     Optional<StockMovement> findById(long id);
 

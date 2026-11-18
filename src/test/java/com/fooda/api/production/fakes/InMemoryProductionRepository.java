@@ -14,6 +14,20 @@ public class InMemoryProductionRepository implements ProductionRepository {
 
     @Override public List<Production> findAll() { return List.copyOf(rows.values()); }
 
+    @Override public List<Production> findAllById(java.util.Collection<Long> ids) {
+        return rows.values().stream().filter(p -> ids.contains(p.id())).toList();
+    }
+
+    @Override public List<Production> findClosedBetween(java.time.LocalDate from, java.time.LocalDate to) {
+        return rows.values().stream()
+                .filter(p -> p.closedOn() != null && !p.closedOn().isBefore(from) && !p.closedOn().isAfter(to)).toList();
+    }
+
+    @Override public Set<YearMonth> months() {
+        return rows.values().stream().map(p -> YearMonth.from(p.closedOn() != null ? p.closedOn() : p.start()))
+                .collect(java.util.stream.Collectors.toSet());
+    }
+
     @Override public Optional<Production> findById(long id) { return Optional.ofNullable(rows.get(id)); }
 
     @Override public Optional<Production> findInitial() {

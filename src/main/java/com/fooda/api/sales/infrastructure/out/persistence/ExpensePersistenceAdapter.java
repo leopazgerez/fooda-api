@@ -8,8 +8,12 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
+import java.time.LocalDate;
+import java.time.YearMonth;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Component
 public class ExpensePersistenceAdapter implements ExpenseRepository {
@@ -51,6 +55,19 @@ public class ExpensePersistenceAdapter implements ExpenseRepository {
     public List<Expense> findAll() {
         return expenses.findAll(Sort.by(Sort.Order.desc("date"), Sort.Order.desc("id"))).stream()
                 .map(ExpensePersistenceAdapter::toDomain).toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Expense> findBetween(LocalDate from, LocalDate to) {
+        return expenses.findByDateBetweenOrderByDateDescIdDesc(from, to).stream()
+                .map(ExpensePersistenceAdapter::toDomain).toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Set<YearMonth> months() {
+        return expenses.dates().stream().map(YearMonth::from).collect(Collectors.toSet());
     }
 
     @Override

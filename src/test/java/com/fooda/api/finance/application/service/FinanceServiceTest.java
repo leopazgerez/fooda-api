@@ -4,8 +4,11 @@ import com.fooda.api.catalog.fakes.*;
 import com.fooda.api.core.domain.catalog.*;
 import com.fooda.api.core.domain.expense.Expense;
 import com.fooda.api.core.domain.expense.PaymentMethod;
+import com.fooda.api.core.domain.finance.Finance;
+import com.fooda.api.core.domain.finance.MonthClose;
 import com.fooda.api.core.domain.finance.SaleProfits;
 import com.fooda.api.core.domain.production.*;
+import com.fooda.api.core.domain.sales.Payment;
 import com.fooda.api.core.domain.sales.Sale;
 import com.fooda.api.core.domain.sales.SaleLine;
 import com.fooda.api.core.domain.sales.SaleType;
@@ -22,12 +25,15 @@ import com.fooda.api.shared.domain.ValidationException;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.time.ZoneOffset;
+import java.util.HashMap;
 import java.util.List;
+import java.util.TreeSet;
 import java.util.Map;
 import java.util.Optional;
 
@@ -185,5 +191,115 @@ class FinanceServiceTest {
                 branches.findAll());
         assertThat(service.month(M_OCT).report().profit())
                 .isEqualByComparingTo(profits.of(a).add(profits.of(b)));
+    }
+
+    // ---- characterization: the bounded load must match the old full load ----
+
+    /** The pre-performance {@code FinanceService.view(load(), month)}: every row of every repository. */
+    private MonthlyView fullView(YearMonth month) {
+        Map<YearMonth, MonthClose> cl = new HashMap<>();
+        closes.findAll().forEach(c -> cl.put(c.month(), c));
+        MonthClose c = cl.get(month);
+        if (c != null) {
+            return new MonthlyView(c.report(), c.closedOn());
+        }
+        return new MonthlyView(fullReport(month, cl, Optional.empty()), null);
+    }
+
+    private com.fooda.api.core.domain.finance.MonthlyReport fullReport(YearMonth month, Map<YearMonth, MonthClose> cl,
+                                                                       Optional<MonthClose> close) {
+        Settings s = settings.require();
+        var prods = productions.findAll();
+        var exps = expenses.findAll();
+        var profits = new SaleProfits(prods, supplies.findAll(), exps, m -> Optional.ofNullable(cl.get(m)), s,
+                branches.findAll());
+        var all = sales.findAll();
+        BigDecimal profit = all.stream().filter(x -> YearMonth.from(x.date()).equals(month)).map(profits::of)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        return Finance.report(month, prods, all, payments.findAll(), exps, close, s, funds.findAll(), profit);
+    }
+
+    private List<MonthlyView> fullMonthly() {
+        TreeSet<YearMonth> months = new TreeSet<>();
+        sales.findAll().forEach(s -> months.add(YearMonth.from(s.date())));
+        expenses.findAll().forEach(e -> months.add(YearMonth.from(e.date())));
+        payments.findAll().forEach(p -> months.add(YearMonth.from(p.date())));
+        productions.findAll().forEach(p -> months.add(YearMonth.from(p.closedOn() != null ? p.closedOn() : p.start())));
+        closes.findAll().forEach(c -> months.add(c.month()));
+        months.add(M_NOV);
+        return months.descendingSet().stream().limit(12).map(this::fullView).toList();
+    }
+
+    /** The pre-performance {@code close}: overhead and report from the full load, draft visible to profits. */
+    private MonthlyView fullClose(YearMonth month) {
+        BigDecimal overhead = Finance.overheadOfMonth(month, expenses.findAll(), productions.findAll());
+        overhead = overhead == null ? null : overhead.setScale(4, RoundingMode.HALF_UP);
+        MonthClose draft = new MonthClose(month, overhead, LocalDate.of(2026, 11, 15));
+        Map<YearMonth, MonthClose> cl = new HashMap<>();
+        closes.findAll().forEach(c -> cl.put(c.month(), c));
+        cl.put(month, draft);
+        return new MonthlyView(fullReport(month, cl, Optional.of(draft)), LocalDate.of(2026, 11, 15));
+    }
+
+    private void assertSameAsFullLoad() {
+        assertThat(service.monthly()).isEqualTo(fullMonthly());
+        for (YearMonth m = YearMonth.of(2024, 12); !m.isAfter(YearMonth.of(2027, 1)); m = m.plusMonths(1)) {
+            assertThat(service.month(m)).as(m.toString()).isEqualTo(fullView(m));
+        }
+    }
+
+    @Test
+    void boundedLoadGivesTheSameReportsAsTheFullLoad() {
+        var snap = productions.findById(lot).orElseThrow().snapshot();
+        LocalDate sep = LocalDate.of(2026, 9, 20);
+        long sepLot = productions.save(new Production(null, "1 SEP 26", 1, ProductionStatus.CLOSED, sep, sep,
+                List.of(new ProductionLine(PACK, 30, 30)), snap, Map.of(1L, new BigDecimal("9000")), null, null)).id();
+        long augLot = productions.save(new Production(null, "1 AGO 26", 1, ProductionStatus.CLOSED,
+                LocalDate.of(2026, 8, 3), LocalDate.of(2026, 8, 5), List.of(new ProductionLine(PACK, 20, 20)), snap,
+                Map.of(1L, new BigDecimal("7000")), null, null)).id();
+        // another lot closed in September: part of September's packs, never sold
+        productions.save(new Production(null, "2 SEP 26", 2, ProductionStatus.CLOSED, sep, sep.plusDays(2),
+                List.of(new ProductionLine(PACK, 10, 10)), snap, Map.of(1L, new BigDecimal("3000")), null, null));
+        productions.save(new Production(null, "1 NOV 26", 1, ProductionStatus.PLANNED, LocalDate.of(2026, 11, 2),
+                null, List.of(new ProductionLine(PACK, 40, 0)), snap, Map.of(), null, null));
+
+        fixedExpense(sep, "60000");
+        fixedExpense(LocalDate.of(2026, 8, 10), "20000");
+        fixedExpense(OCT, "50000");
+        fixedExpense(LocalDate.of(2026, 12, 1), "999"); // future month
+        for (int i = 0; i < 20; i++) { // 2025-01 .. 2026-08: most fall outside monthly()'s 12 months
+            fixedExpense(LocalDate.of(2025, 1, 15).plusMonths(i), String.valueOf(1000 + i));
+        }
+
+        Sale aug = sales.add(new Sale(null, LocalDate.of(2026, 8, 20), branch, null, SaleType.RETAIL, null,
+                PaymentMethod.CASH, null, null, null, List.of(new SaleLine(augLot, PACK, 3, new BigDecimal("45000")))));
+        Sale sepSale = sales.add(new Sale(null, sep.plusDays(5), branch, null, SaleType.RETAIL, null,
+                PaymentMethod.CASH, null, null, null, List.of(new SaleLine(sepLot, PACK, 4, new BigDecimal("45000")))));
+        // October sale of the September lot: its overhead is September's
+        Sale octOfSep = sales.add(new Sale(null, OCT.plusDays(2), branch, null, SaleType.RETAIL, null,
+                PaymentMethod.CASH, null, null, null, List.of(new SaleLine(sepLot, PACK, 5, new BigDecimal("45000")),
+                new SaleLine(lot, PACK, 1, new BigDecimal("45000")))));
+        sale(OCT, 2);
+        sale(LocalDate.of(2026, 11, 3), 1);
+        sales.add(new Sale(null, LocalDate.of(2026, 11, 4), branch, null, SaleType.RETAIL, null, PaymentMethod.CASH,
+                null, null, null, List.of(new SaleLine(augLot, PACK, 1, new BigDecimal("45000")))));
+
+        payments.add(new Payment(null, aug.id(), LocalDate.of(2026, 8, 21), new BigDecimal("100000"), PaymentMethod.CASH));
+        payments.add(new Payment(null, sepSale.id(), OCT.plusDays(1), new BigDecimal("180000"), PaymentMethod.CASH));
+        payments.add(new Payment(null, octOfSep.id(), LocalDate.of(2026, 11, 1), new BigDecimal("50000"), PaymentMethod.CASH));
+
+        assertSameAsFullLoad();
+
+        MonthlyView expectedAug = fullClose(YearMonth.of(2026, 8));
+        assertThat(service.close("2026-08")).isEqualTo(expectedAug);
+        assertSameAsFullLoad();
+
+        MonthlyView expectedSep = fullClose(YearMonth.of(2026, 9));
+        assertThat(service.close("2026-09")).isEqualTo(expectedSep);
+        assertSameAsFullLoad();
+
+        MonthlyView expectedOct = fullClose(M_OCT);
+        assertThat(service.close("2026-10")).isEqualTo(expectedOct);
+        assertSameAsFullLoad();
     }
 }

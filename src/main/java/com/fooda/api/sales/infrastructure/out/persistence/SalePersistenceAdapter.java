@@ -1,5 +1,6 @@
 package com.fooda.api.sales.infrastructure.out.persistence;
 
+import com.fooda.api.core.application.port.out.SaleCriteria;
 import com.fooda.api.core.application.port.out.SaleRepository;
 import com.fooda.api.core.application.port.out.SoldPacks;
 import com.fooda.api.core.domain.expense.PaymentMethod;
@@ -7,17 +8,27 @@ import com.fooda.api.core.domain.sales.Sale;
 import com.fooda.api.core.domain.sales.SaleLine;
 import com.fooda.api.core.domain.sales.SaleRules;
 import com.fooda.api.core.domain.sales.SaleType;
+import com.fooda.api.shared.application.ListQuery;
+import com.fooda.api.shared.application.Page;
+import com.fooda.api.shared.domain.ValidationException;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Component
 public class SalePersistenceAdapter implements SaleRepository, SoldPacks {
@@ -67,6 +78,46 @@ public class SalePersistenceAdapter implements SaleRepository, SoldPacks {
     @Transactional(readOnly = true)
     public List<Sale> findAll() {
         return withLines(sales.findAllByOrderById());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Sale> findBetween(LocalDate from, LocalDate to) {
+        return withLines(sales.findByDateBetweenOrderById(from, to));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Sale> findWithCustomer() {
+        return withLines(sales.findByCustomerIdNotNullOrderById());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Set<YearMonth> months() {
+        return sales.dates().stream().map(YearMonth::from).collect(Collectors.toSet());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<Sale> page(SaleCriteria c, ListQuery q) {
+        String field = q.sort() != null ? q.sort() : "date";
+        if (!field.equals("date") && !field.equals("id")) {
+            throw new ValidationException("sort", "Orden inválido");
+        }
+        Sort.Direction dir = "asc".equals(q.dir()) ? Sort.Direction.ASC : Sort.Direction.DESC;
+        Sort sort = field.equals("id") ? Sort.by(dir, "id") : Sort.by(dir, "date").and(Sort.by("id"));
+        Specification<SaleJpaEntity> spec = (r, cq, cb) -> {
+            List<jakarta.persistence.criteria.Predicate> ps = new ArrayList<>();
+            if (c.branchId() != null) ps.add(cb.equal(r.get("branchId"), c.branchId()));
+            if (c.type() != null) ps.add(cb.equal(r.get("type"), c.type().code()));
+            if (c.customerId() != null) ps.add(cb.equal(r.get("customerId"), c.customerId()));
+            if (c.from() != null) ps.add(cb.greaterThanOrEqualTo(r.get("date"), c.from()));
+            if (c.to() != null) ps.add(cb.lessThanOrEqualTo(r.get("date"), c.to()));
+            return cb.and(ps.toArray(jakarta.persistence.criteria.Predicate[]::new));
+        };
+        var found = sales.findAll(spec, PageRequest.of(q.page(), q.size(), sort));
+        return new Page<>(withLines(found.getContent()), q.page(), q.size(), found.getTotalElements());
     }
 
     @Override

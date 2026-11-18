@@ -107,7 +107,7 @@ public class CustomerService implements CustomerUseCase {
     public FollowUpsView followUps() {
         Settings s = settings.require();
         LocalDate today = calendar.today();
-        List<Sale> sold = sales.findAll();
+        List<Sale> sold = sales.findWithCustomer(); // the rules only read sales of a customer
         Map<Long, List<Sale>> all = byCustomer(sold);
         List<Customer> cs = customers.findAll();
         Map<Long, String> names = packs.findAll().stream().collect(Collectors.toMap(Pack::id, Pack::name));

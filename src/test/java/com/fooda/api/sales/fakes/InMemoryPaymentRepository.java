@@ -23,5 +23,13 @@ public class InMemoryPaymentRepository implements PaymentRepository {
 
     @Override public List<Payment> findAll() { return List.copyOf(rows.values()); }
 
+    @Override public List<Payment> findBetween(java.time.LocalDate from, java.time.LocalDate to) {
+        return rows.values().stream().filter(p -> !p.date().isBefore(from) && !p.date().isAfter(to)).toList();
+    }
+
+    @Override public Set<java.time.YearMonth> months() {
+        return rows.values().stream().map(p -> java.time.YearMonth.from(p.date())).collect(java.util.stream.Collectors.toSet());
+    }
+
     @Override public void softDeleteBySale(long saleId, long actorId) { rows.values().removeIf(p -> p.saleId() == saleId); }
 }

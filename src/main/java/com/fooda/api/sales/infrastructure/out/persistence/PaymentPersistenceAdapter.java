@@ -7,7 +7,11 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
+import java.time.LocalDate;
+import java.time.YearMonth;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Component
 public class PaymentPersistenceAdapter implements PaymentRepository {
@@ -41,6 +45,18 @@ public class PaymentPersistenceAdapter implements PaymentRepository {
     @Transactional(readOnly = true)
     public List<Payment> findAll() {
         return repository.findAllByOrderById().stream().map(PaymentPersistenceAdapter::toDomain).toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Payment> findBetween(LocalDate from, LocalDate to) {
+        return repository.findByDateBetweenOrderById(from, to).stream().map(PaymentPersistenceAdapter::toDomain).toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Set<YearMonth> months() {
+        return repository.dates().stream().map(YearMonth::from).collect(Collectors.toSet());
     }
 
     @Override

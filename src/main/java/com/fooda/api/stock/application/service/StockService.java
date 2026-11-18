@@ -43,11 +43,11 @@ public class StockService implements StockUseCase {
 
     @Override
     public StockView view(Long branchId, Long packId, Long productionId) {
-        List<StockRow> current = StockRules.current(movements.findAll());
+        List<StockRow> current = movements.currentStock();
         List<Branch> allBranches = branches.findAll();
         Map<Long, Branch> branchById = byId(allBranches, Branch::id);
-        Map<Long, Production> productionById = byId(productions.findAll(), Production::id);
-        Map<Long, Pack> packById = byId(packs.findAll(), Pack::id);
+        Map<Long, Production> productionById = byId(productions.findAllById(current.stream().map(StockRow::productionId).collect(Collectors.toSet())), Production::id);
+        Map<Long, Pack> packById = byId(packs.findAllById(current.stream().map(StockRow::packId).collect(Collectors.toSet())), Pack::id);
         BigDecimal defaultPrice = settings.find().map(Settings::packPrice).orElse(null);
 
         List<Row> rows = current.stream()

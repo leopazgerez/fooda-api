@@ -78,7 +78,7 @@ public class AdjustmentService implements AdjustmentUseCase {
             Production lot = r.productionId() == null ? initialLot() : closedLot(r.productionId());
             StockRules.requireAfterLotsClosed(List.of(lot), day);
             long productionId = lot.id();
-            if (r.quantity() < 0 && StockRules.available(movements.findAll(), branchId, productionId, r.packId(), day)
+            if (r.quantity() < 0 && StockRules.available(movements.findByBranchAndProductions(branchId, List.of(productionId)), branchId, productionId, r.packId(), day)
                     + r.quantity() < 0) {
                 throw new ValidationException("quantity", "El ajuste deja el stock en negativo");
             }
@@ -95,7 +95,7 @@ public class AdjustmentService implements AdjustmentUseCase {
             StockMovement m = movements.findById(id).filter(x -> x.type() == MovementType.ADJUSTMENT)
                     .orElseThrow(() -> new ResourceNotFoundException("Ajuste no encontrado"));
             monthCloses.requireOpen(m.date());
-            if (m.quantity() > 0 && StockRules.available(movements.findAll(), m.branchId(), m.productionId(),
+            if (m.quantity() > 0 && StockRules.available(movements.findByBranchAndProductions(m.branchId(), List.of(m.productionId())), m.branchId(), m.productionId(),
                     m.packId(), m.date()) - m.quantity() < 0) {
                 throw new ConflictException("quantity", "Borrar el ajuste deja el stock en negativo");
             }

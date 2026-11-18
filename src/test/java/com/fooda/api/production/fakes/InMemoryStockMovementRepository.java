@@ -26,6 +26,16 @@ public class InMemoryStockMovementRepository implements StockMovementRepository 
 
     @Override public List<StockMovement> findAll() { return List.copyOf(rows.values()); }
 
+    @Override
+    public List<StockMovement> findByBranchAndProductions(long branchId, Collection<Long> productionIds) {
+        return rows.values().stream().filter(m -> m.branchId() == branchId
+                && productionIds.contains(m.productionId())).toList();
+    }
+
+    @Override public java.util.List<com.fooda.api.core.domain.stock.StockRow> currentStock() {
+        return com.fooda.api.core.domain.stock.StockRules.current(findAll());
+    }
+
     @Override public Optional<StockMovement> findById(long id) { return Optional.ofNullable(rows.get(id)); }
 
     @Override

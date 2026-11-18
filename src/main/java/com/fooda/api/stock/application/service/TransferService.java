@@ -94,7 +94,8 @@ public class TransferService implements TransferUseCase {
             LocalDate day = calendar.pastOrToday(r.date());
             StockRules.requireAfterLotsClosed(r.lines().stream().map(OutLine::productionId).distinct()
                     .map(productions::findById).flatMap(Optional::stream).toList(), day);
-            Shortage s = StockRules.firstShortage(movements.findAll(), origin.id(), r.lines(), day).orElse(null);
+            Shortage s = StockRules.firstShortage(movements.findByBranchAndProductions(origin.id(),
+                    r.lines().stream().map(OutLine::productionId).distinct().toList()), origin.id(), r.lines(), day).orElse(null);
             if (s != null) {
                 throw new ValidationException("lines", StockRules.SHORTAGE_MESSAGE
                         .formatted(s.available(), packName(s.packId()), lotCode(s.productionId()), origin.name()));
@@ -128,7 +129,8 @@ public class TransferService implements TransferUseCase {
             // returning the packs is an exit from the destination: same shortage rule as a new transfer
             List<OutLine> back = t.lines().stream()
                     .map(l -> new OutLine(l.productionId(), l.packId(), l.quantity())).toList();
-            StockRules.firstShortage(movements.findAll(), t.destinationBranchId(), back, t.date()).ifPresent(s -> {
+            StockRules.firstShortage(movements.findByBranchAndProductions(t.destinationBranchId(),
+                    back.stream().map(OutLine::productionId).distinct().toList()), t.destinationBranchId(), back, t.date()).ifPresent(s -> {
                 throw new ConflictException(null, "En %s ya no quedan %d packs de %s (%s)".formatted(
                         branchName(t.destinationBranchId()), s.requested(), packName(s.packId()),
                         lotCode(s.productionId())));

@@ -7,6 +7,7 @@ import com.fooda.api.core.application.port.out.MonthCloseRepository;
 import com.fooda.api.core.application.port.out.PackRepository;
 import com.fooda.api.core.application.port.out.PaymentRepository;
 import com.fooda.api.core.application.port.out.ProductionRepository;
+import com.fooda.api.core.application.port.out.SaleCriteria;
 import com.fooda.api.core.application.port.out.SaleRepository;
 import com.fooda.api.core.application.port.out.SettingsRepository;
 import com.fooda.api.core.application.port.out.StockLock;
@@ -50,6 +51,7 @@ import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
@@ -104,8 +106,15 @@ public class SaleService implements SaleUseCase {
 
     @Override
     public Page<SaleView> list(SaleFilter f, ListQuery q) {
-        List<Sale> filtered = sales.findAll().stream().filter(s -> matches(s, f)).toList();
-        Page<Sale> page = Listing.page(filtered, q, SORTABLE, "date", "desc", BY_ID);
+        Page<Sale> page;
+        if (f == null) {
+            page = sales.page(new SaleCriteria(null, null, null, null, null), q);
+        } else if (f.type() != null && Arrays.stream(SaleType.values()).noneMatch(t -> t.code().equals(f.type()))) {
+            page = Listing.page(List.<Sale>of(), q, SORTABLE, "date", "desc", BY_ID); // unknown type: empty, sort still validated
+        } else {
+            SaleType type = f.type() == null ? null : SaleType.of(f.type());
+            page = sales.page(new SaleCriteria(f.branchId(), type, f.customerId(), f.from(), f.to()), q);
+        }
         Views v = new Views();
         return page.map(s -> v.of(s, List.of()));
     }
@@ -168,7 +177,8 @@ public class SaleService implements SaleUseCase {
             LocalDate day = calendar.pastOrToday(r.date());
             StockRules.requireAfterLotsClosed(out.stream().map(OutLine::productionId).distinct()
                     .map(productions::findById).flatMap(Optional::stream).toList(), day);
-            Shortage s = StockRules.firstShortage(movements.findAll(), branch.id(), out, day).orElse(null);
+            Shortage s = StockRules.firstShortage(movements.findByBranchAndProductions(branch.id(),
+                    out.stream().map(OutLine::productionId).distinct().toList()), branch.id(), out, day).orElse(null);
             if (s != null) {
                 throw new ValidationException("lines", StockRules.SHORTAGE_MESSAGE
                         .formatted(s.available(), packName(s.packId()), lotCode(s.productionId()), branch.name()));
@@ -215,14 +225,6 @@ public class SaleService implements SaleUseCase {
 
     private Sale find(long id) {
         return sales.findById(id).orElseThrow(() -> new ResourceNotFoundException("Venta no encontrada"));
-    }
-
-    private static boolean matches(Sale s, SaleFilter f) {
-        return f == null || ((f.branchId() == null || f.branchId() == s.branchId())
-                && (f.type() == null || f.type().equals(s.type().code()))
-                && (f.customerId() == null || f.customerId().equals(s.customerId()))
-                && (f.from() == null || !s.date().isBefore(f.from()))
-                && (f.to() == null || !s.date().isAfter(f.to())));
     }
 
     private static String blankToNull(String s) {

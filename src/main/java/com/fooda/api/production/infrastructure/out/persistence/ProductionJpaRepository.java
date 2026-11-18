@@ -17,6 +17,12 @@ interface ProductionJpaRepository extends JpaRepository<ProductionJpaEntity, Lon
             nativeQuery = true)
     int maxNumber(@Param("from") LocalDate from, @Param("to") LocalDate to);
 
+    @Query("select e.id from ProductionJpaEntity e where e.closedOn between :from and :to")
+    java.util.List<Long> idsClosedBetween(@Param("from") LocalDate from, @Param("to") LocalDate to);
+
+    @Query("select distinct coalesce(e.closedOn, e.startDate) from ProductionJpaEntity e")
+    java.util.List<LocalDate> monthDates();
+
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query("update ProductionJpaEntity e set e.deletedAt = :now, e.deletedBy = :by where e.id = :id and e.deletedAt is null")
     void softDelete(@Param("id") long id, @Param("by") long by, @Param("now") Instant now);

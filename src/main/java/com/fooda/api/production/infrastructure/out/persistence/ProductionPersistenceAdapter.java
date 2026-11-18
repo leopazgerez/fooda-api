@@ -15,12 +15,15 @@ import tools.jackson.core.type.TypeReference;
 
 import java.math.BigDecimal;
 import java.time.Clock;
+import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import static com.fooda.api.shared.infrastructure.out.persistence.JsonbMapper.JSON;
 
@@ -57,6 +60,28 @@ public class ProductionPersistenceAdapter implements ProductionRepository {
         lines.findAllByOrderById().forEach(l -> byProduction.computeIfAbsent(l.productionId, k -> new ArrayList<>()).add(toDomain(l)));
         return productions.findAll(Sort.by("id")).stream()
                 .map(e -> toDomain(e, byProduction.getOrDefault(e.id, List.of()))).toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Production> findAllById(java.util.Collection<Long> ids) {
+        if (ids.isEmpty()) return List.of();
+        Map<Long, List<ProductionLine>> byProduction = new LinkedHashMap<>();
+        lines.findByProductionIdInOrderById(ids).forEach(l -> byProduction.computeIfAbsent(l.productionId, k -> new ArrayList<>()).add(toDomain(l)));
+        return productions.findAllById(ids).stream().sorted(java.util.Comparator.comparingLong(e -> e.id))
+                .map(e -> toDomain(e, byProduction.getOrDefault(e.id, List.of()))).toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Production> findClosedBetween(LocalDate from, LocalDate to) {
+        return findAllById(productions.idsClosedBetween(from, to));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Set<YearMonth> months() {
+        return productions.monthDates().stream().map(YearMonth::from).collect(Collectors.toSet());
     }
 
     @Override

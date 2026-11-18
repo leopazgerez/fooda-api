@@ -167,6 +167,21 @@ class DishPackPersistenceTest {
     }
 
     @Test
+    void findAllByIdMatchesFilteringFindAllAndSkipsDeleted() {
+        Pack a = packs.save(new Pack(null, 1, "Pack 1", true, null, null));
+        Pack b = packs.save(new Pack(null, 2, "Pack 2", true, null, null));
+        Pack c = packs.save(new Pack(null, 3, "Pack 3", true, null, null));
+        packs.softDelete(c.id(), actor);
+        reload();
+
+        assertThat(packs.findAllById(List.of(c.id(), b.id(), 99_999L)))
+                .isEqualTo(packs.findAll().stream().filter(p -> p.id().equals(b.id())).toList());
+        assertThat(packs.findAllById(List.of(a.id(), b.id(), c.id()))).extracting(Pack::id)
+                .containsExactlyInAnyOrder(a.id(), b.id());
+        assertThat(packs.findAllById(List.of())).isEmpty();
+    }
+
+    @Test
     void maxNumberStartsAtZero() {
         assertThat(packs.maxNumber()).isZero();
         packs.save(new Pack(null, 3, "Pack 3", true, null, null));

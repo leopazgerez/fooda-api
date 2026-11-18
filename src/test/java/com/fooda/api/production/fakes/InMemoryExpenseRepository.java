@@ -41,6 +41,14 @@ public class InMemoryExpenseRepository implements ExpenseRepository {
 
     @Override public List<Expense> findAll() { return List.copyOf(rows.values()); }
 
+    @Override public List<Expense> findBetween(java.time.LocalDate from, java.time.LocalDate to) {
+        return rows.values().stream().filter(e -> !e.date().isBefore(from) && !e.date().isAfter(to)).toList();
+    }
+
+    @Override public Set<java.time.YearMonth> months() {
+        return rows.values().stream().map(e -> java.time.YearMonth.from(e.date())).collect(java.util.stream.Collectors.toSet());
+    }
+
     @Override
     public Optional<Expense> findByPurchase(long purchaseId) {
         return rows.values().stream().filter(e -> e.purchaseId() != null && e.purchaseId() == purchaseId).findFirst();

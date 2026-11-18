@@ -3,10 +3,12 @@ package com.fooda.api.stock.infrastructure.out.persistence;
 import com.fooda.api.core.application.port.out.StockMovementRepository;
 import com.fooda.api.core.domain.stock.MovementType;
 import com.fooda.api.core.domain.stock.StockMovement;
+import com.fooda.api.core.domain.stock.StockRow;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -46,6 +48,25 @@ public class StockPersistenceAdapter implements StockMovementRepository {
     @Transactional(readOnly = true)
     public List<StockMovement> findAll() {
         return movements.findAllByOrderById().stream().map(StockPersistenceAdapter::toDomain).toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<StockMovement> findByBranchAndProductions(long branchId, Collection<Long> productionIds) {
+        return movements.findByBranchIdAndProductionIdInOrderById(branchId, productionIds).stream()
+                .map(StockPersistenceAdapter::toDomain).toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<StockRow> currentStock() {
+        return movements.currentStock().stream().map(r -> new StockRow(((Number) r[0]).longValue(),
+                ((Number) r[1]).longValue(), ((Number) r[2]).longValue(), clamp(((Number) r[3]).longValue()))).toList();
+    }
+
+    // same saturation as StockRules.current
+    private static int clamp(long v) {
+        return (int) Math.max(Integer.MIN_VALUE, Math.min(Integer.MAX_VALUE, v));
     }
 
     @Override

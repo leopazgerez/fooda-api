@@ -63,11 +63,12 @@ public class DashboardService implements DashboardUseCase {
     public DashboardView get() {
         LocalDate today = calendar.today();
         YearMonth month = YearMonth.from(today);
-        List<Sale> allSales = sales.findAll();
+        // previousPeriod and salesByPack only read the previous and the current month
+        List<Sale> recent = sales.findBetween(month.minusMonths(1).atDay(1), month.atEndOfMonth());
         List<ProductionSummary> summaries = productions.summaries();
         List<ProductionSummary> withLines = summaries.stream().filter(p -> !p.packLines().isEmpty()).toList();
-        return new DashboardView(today, finance.month(month), previousPeriod(allSales, today, month),
-                stock.view(null, null, null).byBranch(), salesByPack(allSales, month),
+        return new DashboardView(today, finance.month(month), previousPeriod(recent, today, month),
+                stock.view(null, null, null).byBranch(), salesByPack(recent, month),
                 withLines.stream().sorted(Comparator.comparingLong(ProductionSummary::id).reversed())
                         .limit(LAST_PRODUCTIONS).toList(),
                 payback(withLines), notices());

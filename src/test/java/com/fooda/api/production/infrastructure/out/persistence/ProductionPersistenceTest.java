@@ -115,6 +115,24 @@ class ProductionPersistenceTest {
     }
 
     @Test
+    void findAllByIdMatchesFilteringFindAllAndSkipsDeleted() {
+        long a = productions.save(production(List.of(new ProductionLine(pack1, 5, null)))).id();
+        Production base = production(List.of());
+        long b = productions.save(new Production(null, "P-002", 2, ProductionStatus.PLANNED, base.start(), null,
+                List.of(new ProductionLine(pack1, 1, null), new ProductionLine(pack2, 2, null)), base.snapshot(),
+                Map.of(), Map.of(), null)).id();
+        long c = productions.save(new Production(null, "P-003", 3, ProductionStatus.PLANNED, base.start(), null,
+                List.of(), base.snapshot(), Map.of(), Map.of(), null)).id();
+        productions.softDelete(c, actor);
+        reload();
+
+        assertThat(productions.findAllById(List.of(b, c, a, 99_999L)))
+                .isEqualTo(productions.findAll().stream().filter(p -> List.of(a, b).contains(p.id())).toList())
+                .extracting(Production::id).containsExactly(a, b);
+        assertThat(productions.findAllById(List.of())).isEmpty();
+    }
+
+    @Test
     void paidCostsAndLeftoversRoundTrip() {
         Production base = production(List.of());
         Production p = productions.save(new Production(null, "P-002", 2, ProductionStatus.CLOSED, base.start(),
@@ -265,5 +283,33 @@ class ProductionPersistenceTest {
                 .satisfies(x -> assertThat(x.lines()).singleElement()
                         .satisfies(l -> assertThat(l.quantity()).isEqualByComparingTo("1")));
         assertThat(purchases.findByProduction(999)).isEmpty();
+    }
+
+    @Test
+    void findClosedBetweenAndMonthsMatchFilteringFindAll() {
+        LocalDate from = LocalDate.of(2026, 3, 1);
+        LocalDate to = LocalDate.of(2026, 3, 31);
+        Production base = production(List.of());
+        java.util.function.BiFunction<Integer, LocalDate, Long> lot = (n, closedOn) -> productions.save(new Production(
+                null, "P-" + n, n, closedOn == null ? ProductionStatus.PLANNED : ProductionStatus.CLOSED,
+                LocalDate.of(2026, 2, 1), closedOn, List.of(new ProductionLine(pack1, n, closedOn == null ? null : n)),
+                base.snapshot(), Map.of(), Map.of(), null)).id();
+        lot.apply(1, LocalDate.of(2026, 2, 28));
+        lot.apply(2, from);
+        lot.apply(3, to);
+        lot.apply(4, LocalDate.of(2026, 4, 1));
+        lot.apply(5, null); // planned: start month 2026-02
+        long gone = lot.apply(6, LocalDate.of(2026, 3, 10));
+        lot.apply(7, LocalDate.of(2026, 3, 15));
+        productions.softDelete(gone, actor);
+        reload();
+
+        assertThat(productions.findClosedBetween(from, to)).isEqualTo(productions.findAll().stream()
+                .filter(p -> p.closedOn() != null && !p.closedOn().isBefore(from) && !p.closedOn().isAfter(to))
+                .toList()).hasSize(3);
+        assertThat(productions.findClosedBetween(LocalDate.of(2025, 1, 1), LocalDate.of(2025, 1, 31))).isEmpty();
+        assertThat(productions.months()).isEqualTo(productions.findAll().stream()
+                .map(p -> java.time.YearMonth.from(p.closedOn() != null ? p.closedOn() : p.start()))
+                .collect(java.util.stream.Collectors.toSet())).hasSize(3);
     }
 }

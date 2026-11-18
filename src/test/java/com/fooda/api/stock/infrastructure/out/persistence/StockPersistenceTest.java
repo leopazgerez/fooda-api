@@ -5,6 +5,7 @@ import com.fooda.api.config.JpaAuditingConfig;
 import com.fooda.api.config.TimeConfig;
 import com.fooda.api.core.domain.stock.MovementType;
 import com.fooda.api.core.domain.stock.StockMovement;
+import com.fooda.api.core.domain.stock.StockRules;
 import com.fooda.api.core.domain.stock.Transfer;
 import com.fooda.api.core.domain.stock.TransferLine;
 import com.fooda.api.support.Actors;
@@ -123,6 +124,60 @@ class StockPersistenceTest {
         reload();
         assertThat(movements.isPackUsed(pack)).isFalse();
         assertThat(movements.isBranchUsed(shop)).isFalse();
+    }
+
+    @Test
+    void findByBranchAndProductionsMatchesFilteringFindAll() {
+        long lot3 = Rows.production(jdbc, actor);
+        long pack2 = Rows.pack(jdbc, actor);
+        List<Long> lots = List.of(lot, otherLot, lot3);
+        int d = 1;
+        StockMovement deleted = null;
+        for (long br : List.of(kitchen, shop)) {
+            for (long l : lots) {
+                for (long p : List.of(pack, pack2)) {
+                    StockMovement m = movements.add(new StockMovement(null, LocalDate.of(2026, 1 + (d % 4), 1 + d % 27),
+                            br, l, p, d % 2 == 0 ? 5 : -1, MovementType.ADJUSTMENT, null, "x"));
+                    if (d == 3) deleted = m;
+                    d++;
+                }
+            }
+        }
+        movements.softDelete(deleted.id(), actor);
+        reload();
+        List<List<Long>> subsets = List.of(List.of(lot), List.of(lot, lot3), lots, List.of(otherLot, lot3), List.of());
+        for (long br : List.of(kitchen, shop)) {
+            for (List<Long> s : subsets) {
+                assertThat(movements.findByBranchAndProductions(br, s))
+                        .isEqualTo(movements.findAll().stream()
+                                .filter(m -> m.branchId() == br && s.contains(m.productionId())).toList());
+            }
+        }
+        assertThat(movements.findByBranchAndProductions(kitchen, lots)).hasSize(5)
+                .extracting(StockMovement::id).doesNotContain(deleted.id());
+    }
+
+    @Test
+    void currentStockMatchesStockRulesCurrent() {
+        long lot3 = Rows.production(jdbc, actor);
+        long pack2 = Rows.pack(jdbc, actor);
+        LocalDate d = LocalDate.of(2026, 3, 1);
+        // lot sums to zero in the kitchen; lot3/pack2 gets a deleted movement; shop has a big lot
+        movements.add(new StockMovement(null, d, kitchen, lot, pack, 10, MovementType.PRODUCTION, null, null));
+        movements.add(new StockMovement(null, d, kitchen, lot, pack, -10, MovementType.ADJUSTMENT, null, "x"));
+        movements.add(new StockMovement(null, d, kitchen, otherLot, pack2, 7, MovementType.PRODUCTION, null, null));
+        movements.add(new StockMovement(null, d, shop, otherLot, pack, 4, MovementType.PRODUCTION, null, null));
+        movements.add(new StockMovement(null, d, shop, otherLot, pack, -1, MovementType.ADJUSTMENT, null, "x"));
+        movements.add(new StockMovement(null, d, shop, lot3, pack2, 3, MovementType.PRODUCTION, null, null));
+        movements.add(new StockMovement(null, d, kitchen, lot3, pack, 2, MovementType.PRODUCTION, null, null));
+        StockMovement deleted = movements.add(new StockMovement(null, d, kitchen, lot3, pack2, 9, MovementType.PRODUCTION, null, null));
+        movements.softDelete(deleted.id(), actor);
+        reload();
+
+        assertThat(movements.currentStock()).isNotEmpty()
+                .isEqualTo(StockRules.current(movements.findAll()))
+                .noneMatch(r -> r.quantity() == 0)
+                .noneMatch(r -> r.branchId() == kitchen && r.productionId() == lot);
     }
 
     @Test

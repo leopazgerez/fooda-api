@@ -14,6 +14,10 @@ public class InMemoryPackRepository implements PackRepository {
 
     @Override public List<Pack> findAll() { return List.copyOf(rows.values()); }
 
+    @Override public List<Pack> findAllById(java.util.Collection<Long> ids) {
+        return rows.values().stream().filter(p -> ids.contains(p.id())).toList();
+    }
+
     @Override public Optional<Pack> findById(long id) { return Optional.ofNullable(rows.get(id)); }
 
     @Override

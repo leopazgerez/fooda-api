@@ -80,4 +80,28 @@ class ExpensePersistenceTest {
         assertThat(jdbc.queryForObject("select deleted_by from expense where expense_id = ?", Long.class, e.id())).isEqualTo(actor);
         assertThat(soldPacks.soldByProduction()).isEmpty();
     }
+
+    @Test
+    void findBetweenAndMonthsMatchFilteringFindAll() {
+        LocalDate from = LocalDate.of(2026, 3, 1);
+        LocalDate to = LocalDate.of(2026, 3, 31);
+        Long deleted = null;
+        for (LocalDate d : java.util.List.of(LocalDate.of(2026, 2, 28), to, from, LocalDate.of(2026, 3, 15),
+                LocalDate.of(2026, 4, 1), LocalDate.of(2026, 3, 20), LocalDate.of(2025, 11, 5))) {
+            deleted = expenses.add(new Expense(null, d, "luz", "Luz", new BigDecimal("10"), null, null,
+                    PaymentMethod.CASH, true, null, null, null, null)).id();
+        }
+        expenses.add(new Expense(null, from, "fijo", "Alquiler", new BigDecimal("20"), null, null,
+                PaymentMethod.CASH, true, null, null, null, null));
+        expenses.softDelete(deleted, actor); // the 2025-11 one
+        expenses.softDelete(expenses.findAll().stream().filter(e -> e.date().equals(LocalDate.of(2026, 3, 20)))
+                .findFirst().orElseThrow().id(), actor);
+        em.flush();
+        em.clear();
+
+        assertThat(expenses.findBetween(from, to)).isEqualTo(expenses.findAll().stream()
+                .filter(e -> !e.date().isBefore(from) && !e.date().isAfter(to)).toList()).hasSize(4);
+        assertThat(expenses.months()).isEqualTo(expenses.findAll().stream().map(e -> java.time.YearMonth.from(e.date()))
+                .collect(java.util.stream.Collectors.toSet())).hasSize(3);
+    }
 }
